@@ -4,7 +4,7 @@ NullTrace is a Minecraft client privacy layer focused on client identity protect
 
 ## Phase 0 - Foundation
 
-- Complete the OpSec to NullTrace rebrand.
+- Complete the NullTrace to NullTrace rebrand.
 - Rename Java packages to `net.nulltrace`.
 - Rename resource namespaces to `nulltrace`.
 - Set the Fabric mod ID to `nulltrace`.
@@ -220,5 +220,5 @@ NullTrace 1.0 should contain:
 - Central detection and policy engine
 - Connection warning system
 - Fingerprint audit
-- Migrated OpSec protections
+- Migrated NullTrace protections
 - Regression test suite

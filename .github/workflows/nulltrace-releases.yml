@@ -35,10 +35,6 @@ jobs:
           distribution: temurin
           java-version: '25'
 
-      - name: Configure NullTrace
-        shell: pwsh
-        run: ./scripts/migrate-nulltrace.ps1
-
       - name: Set active Stonecutter version
         run: ./gradlew --no-daemon "Set active project to ${{ matrix.minecraft }}"
 

@@ -2,24 +2,16 @@ plugins {
     id 'dev.kikugie.stonecutter'
 }
 
-stonecutter.active '1.21.6' /* [SC] DO NOT EDIT */
+stonecutter.active '26.2' /* [SC] DO NOT EDIT */
 
-// Task to build all versions
 tasks.register('buildAll') {
     group = 'build'
-    description = 'Builds all Minecraft versions'
-    dependsOn ':1.20.1:build', ':1.20.2:build', ':1.20.4:build', ':1.20.6:build',
-              ':1.21.1:build', ':1.21.4:build', ':1.21.6:build',
-              ':1.21.9:build', ':1.21.11:build',
-              ':26.1:build', ':26.2:build'
+    description = 'Builds all supported Minecraft versions'
+    dependsOn ':26.2:build', ':26.3:build'
 }
 
-// Task to remap all versions (produces final JARs)
 tasks.register('remapAll') {
     group = 'build'
-    description = 'Remaps JARs for all Minecraft versions'
-    dependsOn ':1.20.1:remapJar', ':1.20.2:remapJar', ':1.20.4:remapJar', ':1.20.6:remapJar',
-              ':1.21.1:remapJar', ':1.21.4:remapJar', ':1.21.6:remapJar',
-              ':1.21.9:remapJar', ':1.21.11:remapJar',
-              ':26.1:jar', ':26.2:jar'
+    description = 'Builds final artifacts for all supported Minecraft versions'
+    dependsOn ':26.2:jar', ':26.3:jar'
 }

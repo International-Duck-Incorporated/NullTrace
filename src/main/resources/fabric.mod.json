@@ -1,34 +1,34 @@
 {
 	"schemaVersion": 1,
-	"id": "opsec",
+	"id": "nulltrace",
 	"version": "${version}",
-	"name": "OpSec",
+	"name": "NullTrace",
 	"description": "Advanced client brand spoofing, tracking exploit protections, and other privacy focused features.",
 	"authors": [
 		"Aurick"
 	],
 	"contact": {
-		"homepage": "https://modrinth.com/mod/opsec",
-		"sources": "https://github.com/aurickk/OpSec",
-		"issues": "https://github.com/aurickk/OpSec/issues"
+		"homepage": "https://modrinth.com/mod/nulltrace",
+		"sources": "https://github.com/International-Duck-Incorporated/NullTrace",
+		"issues": "https://github.com/International-Duck-Incorporated/NullTrace/issues"
 	},
 	"license": "GPL-3.0-only",
-	"icon": "assets/opsec/icon.png",
+	"icon": "assets/nulltrace/icon.png",
 	"environment": "client",
 	"entrypoints": {
 		"client": [
-			"aurick.opsec.mod.OpsecClient"
+			"net.nulltrace.mod.NullTraceClient"
 		],
 		"modmenu": [
-			"aurick.opsec.mod.config.OpsecModMenuIntegration"
+			"net.nulltrace.mod.config.NullTraceModMenuIntegration"
 		],
 		"mixinsquared": [
-			"aurick.opsec.mod.mixin.MeteorMixinCanceller"
+			"net.nulltrace.mod.mixin.MeteorMixinCanceller"
 		]
 	},
 	"mixins": [
 		{
-			"config": "opsec.client.mixins.json",
+			"config": "nulltrace.client.mixins.json",
 			"environment": "client"
 		}
 	],

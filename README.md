@@ -1,18 +1,18 @@
 <p align="center">
-<img src="https://github.com/user-attachments/assets/9adba640-2570-4c22-9355-4f13aa5d4507" alt="opsectransparent" width="15%"/>
+<img src="docs/assets/nulltrace-logo.png" alt="NullTrace" width="15%"/>
 </p>
-<h1 align="center">OpSec</h1>
+<h1 align="center">NullTrace</h1>
 
 
 <p align="center">A client-side Minecraft mod that provides protection against client fingerprinting, tracking exploits, and other privacy focused features.</p>
 
 <p align="center">
-<a href="https://modrinth.com/mod/opsec"><img alt="Modrinth Downloads" src="https://img.shields.io/modrinth/dt/opsec?logo=modrinth&logoColor=white&label=Modrinth&color=00AF5C"></a>
-<a href="https://modrinth.com/mod/opsec/versions"><img alt="Supported Minecraft Versions" src="https://img.shields.io/badge/Available%20for-1.20%20%E2%80%93%2026.2-00AF5C"></a>
-<a href="https://www.curseforge.com/minecraft/mc-mods/opsec"><img alt="CurseForge Downloads" src="https://img.shields.io/curseforge/dt/1519411?logo=curseforge&logoColor=white&label=Curseforge&color=F16436"></a>
-<a href="https://www.curseforge.com/minecraft/mc-mods/opsec"><img alt="Supported Minecraft Versions" src="https://img.shields.io/badge/Available%20for-1.20%20%E2%80%93%2026.2-F16436"></a>
-<a href="https://github.com/aurickk/OpSec/releases"><img alt="GitHub Downloads" src="https://img.shields.io/github/downloads/aurickk/OpSec/total?logo=github&logoColor=white&label=GitHub&color=6e5494"></a>
-<a href="https://github.com/aurickk/OpSec/releases/latest"><img alt="GitHub Release" src="https://img.shields.io/github/v/release/aurickk/OpSec?logo=github&logoColor=white&label=Release&color=6e5494"></a>
+<a href="https://modrinth.com/mod/nulltrace"><img alt="Modrinth Downloads" src="https://img.shields.io/modrinth/dt/nulltrace?logo=modrinth&logoColor=white&label=Modrinth&color=00AF5C"></a>
+<a href="https://modrinth.com/mod/nulltrace/versions"><img alt="Supported Minecraft Versions" src="https://img.shields.io/badge/Available%20for-1.20%20%E2%80%93%2026.2-00AF5C"></a>
+<a href="https://www.curseforge.com/minecraft/mc-mods/nulltrace"><img alt="CurseForge Downloads" src="https://img.shields.io/curseforge/dt/1519411?logo=curseforge&logoColor=white&label=Curseforge&color=F16436"></a>
+<a href="https://www.curseforge.com/minecraft/mc-mods/nulltrace"><img alt="Supported Minecraft Versions" src="https://img.shields.io/badge/Available%20for-1.20%20%E2%80%93%2026.2-F16436"></a>
+<a href="https://github.com/International-Duck-Incorporated/NullTrace/releases"><img alt="GitHub Downloads" src="https://img.shields.io/github/downloads/International-Duck-Incorporated/NullTrace/total?logo=github&logoColor=white&label=GitHub&color=6e5494"></a>
+<a href="https://github.com/International-Duck-Incorporated/NullTrace/releases/latest"><img alt="GitHub Release" src="https://img.shields.io/github/v/release/International-Duck-Incorporated/NullTrace?logo=github&logoColor=white&label=Release&color=6e5494"></a>
 </p>
 
 
@@ -20,10 +20,10 @@
 > This is a passion project built and maintained with **AI**.
 
 > [!IMPORTANT]
-> Fake phishing sites and Discord servers has been distributing **trojanized** builds of OpSec. Only download OpSec from these official sources:
-> - **[Modrinth](https://modrinth.com/mod/opsec)**
-> - **[GitHub Releases](https://github.com/aurickk/OpSec/releases)**
-> - **[CurseForge](https://www.curseforge.com/minecraft/mc-mods/opsec)** (updated less frequently)
+> Fake phishing sites and Discord servers has been distributing **trojanized** builds of NullTrace. Only download NullTrace from these official sources:
+> - **[Modrinth](https://modrinth.com/mod/nulltrace)**
+> - **[GitHub Releases](https://github.com/International-Duck-Incorporated/NullTrace/releases)**
+> - **[CurseForge](https://www.curseforge.com/minecraft/mc-mods/nulltrace)** (updated less frequently)
 >
 > Builds from anywhere else are not official and may be malicious.
 
@@ -55,13 +55,13 @@
 
 1. Install [Fabric Loader](https://fabricmc.net/use/) for your Minecraft version
 2. Download the latest [Fabric API](https://modrinth.com/mod/fabric-api) for your Minecraft version
-3. Download the latest `opsec-[minecraft_version]+[version].jar` from the [Releases](https://github.com/aurickk/OpSec/releases/) page
+3. Download the latest `nulltrace-[minecraft_version]+[version].jar` from the [Releases](https://github.com/International-Duck-Incorporated/NullTrace/releases/) page
 4. Place both mods in your `.minecraft/mods` folder
 5. Launch Minecraft
 
 ## Configurations
 
-The settings menu is accessible via the `OpSec` button in the multiplayer server selection menu header or via [Mod Menu](https://modrinth.com/mod/modmenu).
+The settings menu is accessible via the `NullTrace` button in the multiplayer server selection menu header or via [Mod Menu](https://modrinth.com/mod/modmenu).
 
 <img width="1465" height="820" alt="image" src="https://github.com/user-attachments/assets/c69a768b-60ac-4f78-9705-184f6c4e4495" />
 
@@ -99,7 +99,7 @@ If settings are changed while connected to a server it is recommended to reconne
 | **Show Toasts** | Display popup notifications for important events |
 | **Log Detections** | Log all detection events to game log for transparency |
 | **Debug Alerts** | Show alerts for all probed keys, even unchanged ones |
-| **Debug Command** | Enable the `/opsec` debug command. Off by default.
+| **Debug Command** | Enable the `/nulltrace` debug command. Off by default.
 
 #### Accounts Tab
 
@@ -113,14 +113,14 @@ If settings are changed while connected to a server it is recommended to reconne
 
 ### Debug Commands
 
-The `/opsec` command is **off by default** (enable it in Misc → Debug Command). When enabled, use `/opsec` in-game to access debug information:
+The `/nulltrace` command is **off by default** (enable it in Misc → Debug Command). When enabled, use `/nulltrace` in-game to access debug information:
 
 | Command | Description |
 |---------|-------------|
-| `/opsec` | Show available commands |
-| `/opsec info` | Show overview of all tracked mods |
-| `/opsec info <mod>` | Show details for a specific mod (translation keys, keybinds, channels, known packs, shaders) |
-| `/opsec channels` | Show all tracked network channels with whitelist status |
+| `/nulltrace` | Show available commands |
+| `/nulltrace info` | Show overview of all tracked mods |
+| `/nulltrace info <mod>` | Show details for a specific mod (translation keys, keybinds, channels, known packs, shaders) |
+| `/nulltrace channels` | Show all tracked network channels with whitelist status |
 
 ### Understanding Alerts
 
@@ -132,7 +132,7 @@ The `/opsec` command is **off by default** (enable it in Misc → Debug Command)
 
 ### Spoof as Vanilla
 
-Servers can query your client brand to detect whether you're running a modded client. OpSec provides true vanilla spoofing by blocking all mod key resolutions, network channels, and known-pack identifiers (whilst keeping vanilla ones).
+Servers can query your client brand to detect whether you're running a modded client. NullTrace provides true vanilla spoofing by blocking all mod key resolutions, network channels, and known-pack identifiers (whilst keeping vanilla ones).
 
 - **ON** - Appear as an unmodified Minecraft client
 - **OFF** - Appear as a standard Fabric client (default)
@@ -148,7 +148,7 @@ Server-required resource packs could be used to fingerprint client instance acro
 
 https://alaggydev.github.io/posts/cytooxien/
 
-Instead of storing all resource packs in a shared cache (`~/.minecraft/downloads/`), OpSec creates separate cache directories for each account UUID.
+Instead of storing all resource packs in a shared cache (`~/.minecraft/downloads/`), NullTrace creates separate cache directories for each account UUID.
 
 ---
 
@@ -160,7 +160,7 @@ Malicious servers can send resource pack URLs that redirect to your local networ
 
 https://alaggydev.github.io/posts/cytooxien/
 
-OpSec checks if a redirect or normal request targets a local address, then blocks the connection.
+NullTrace checks if a redirect or normal request targets a local address, then blocks the connection.
 
 ---
 
@@ -168,9 +168,9 @@ OpSec checks if a redirect or normal request targets a local address, then block
 
 Servers can push required resource packs the client is forced to apply. Declining them or toggling required server resource pack(s) is impossible on vanilla client. And fake accepting them can be detectable via key resolution probing the client's resource pack key response.
 
-Minecraft still accepts and downloads these packs as normal but OpSec lets you toggle the pack textures at the client level. The language file of the server resource pack is preserved because servers can probe translation keys (e.g. via `{"translate": "some.pack.key"}`) to detect whether the pack is actually applied, and a vanilla client with the pack loaded would resolve those keys to the pack-defined value.
+Minecraft still accepts and downloads these packs as normal but NullTrace lets you toggle the pack textures at the client level. The language file of the server resource pack is preserved because servers can probe translation keys (e.g. via `{"translate": "some.pack.key"}`) to detect whether the pack is actually applied, and a vanilla client with the pack loaded would resolve those keys to the pack-defined value.
 
-With Opsec installed, server resource pack(s) appears as a normal user-toggleable entry in the resource pack menu so you can flip between stripped and fully-loaded.
+With NullTrace installed, server resource pack(s) appears as a normal user-toggleable entry in the resource pack menu so you can flip between stripped and fully-loaded.
 
 **Modes:**
 - **MANUAL** (default): Required packs apply fully like vanilla on push. Optional packs follow vanilla toggle semantics. The user can still unequip any server pack from the pack menu to strip it while keeping lang loaded.
@@ -184,7 +184,7 @@ With Opsec installed, server resource pack(s) appears as a normal user-toggleabl
 
 Some mods (e.g. [Meteor Client](https://github.com/MeteorDevelopment/meteor-client)) render their GUI with their own shaders loaded through Minecraft's resource manager. A forced server resource pack can overide the mod's own files to ship shaders under that mod to either blank the mod's GUI, crash the client with malformed shaders, or GPU DoS, which also fingerprints that the mod is installed.
 
-OpSec strips shader overrides under `assets/<mod>/shaders/` from server packs for any installed mod that isn't whitelisted, so the resource manager falls back to the mod's own bundled shaders. The rest of the pack still loads, so this keeps working even when a server forces the pack to make [Bypass Server Pack Requirement](#bypass-server-pack-requirement) unusable.
+NullTrace strips shader overrides under `assets/<mod>/shaders/` from server packs for any installed mod that isn't whitelisted, so the resource manager falls back to the mod's own bundled shaders. The rest of the pack still loads, so this keeps working even when a server forces the pack to make [Bypass Server Pack Requirement](#bypass-server-pack-requirement) unusable.
 
 Vanilla (`minecraft`) shaders are never touched, and whitelisting a mod lets the server's shader override through.
 
@@ -196,7 +196,7 @@ Servers can send translatable text containing keys like `key.attack` or `key.hid
 
 https://wurst.wiki/sign_translation_vulnerability
 
-OpSec tracks when translation keys are being resolved during server packet processing and blocks Minecraft from resolving them based on your selected brand mode:
+NullTrace tracks when translation keys are being resolved during server packet processing and blocks Minecraft from resolving them based on your selected brand mode:
 
 #### Spoof as Vanilla Behavior
 
@@ -239,7 +239,7 @@ What a Vanilla response would actaully be:
 ```
 'key.meteor-client.open-gui' '⟦FALLBACK⟧'→'⟦FALLBACK⟧'
 ```
-OpSec's bandaid fix for Meteor is to blacklist the `AbstractSignEditScreenMixin` Mixin to disable Meteor's broken key resolution protection. Allowing OpSec's protection to take over, which already handle fallbacks correctly to match the Vanilla response.
+NullTrace's bandaid fix for Meteor is to blacklist the `AbstractSignEditScreenMixin` Mixin to disable Meteor's broken key resolution protection. Allowing NullTrace's protection to take over, which already handle fallbacks correctly to match the Vanilla response.
 
 <img width="901" height="107" alt="image" src="https://github.com/user-attachments/assets/506b9c73-6747-40f8-9a56-52c0353034b4" />
 
@@ -247,7 +247,7 @@ OpSec's bandaid fix for Meteor is to blacklist the `AbstractSignEditScreenMixin`
 
 ### ExploitPreventer Compatibility
 
-For users that prefers [ExploitPreventer](https://github.com/NikOverflow/ExploitPreventer)'s core protection implementation but still need OpSec's additional features, both can be installed alongside each other. Overlapping features are automatically disabled to let EP handle them, note that you would lose OpSec features such as channels spoofing. The following OpSec features are deferred to EP:
+For users that prefers [ExploitPreventer](https://github.com/NikOverflow/ExploitPreventer)'s core protection implementation but still need NullTrace's additional features, both can be installed alongside each other. Overlapping features are automatically disabled to let EP handle them, note that you would lose NullTrace features such as channels spoofing. The following NullTrace features are deferred to EP:
 
 - [Brand Spoofing](#brand-spoofing)
 - [Channel Spoofing](#channel-spoofing)
@@ -267,7 +267,7 @@ Features that don't overlap remain fully functional: alerts, chat signing, accou
 
 Servers can query your registered network channels to detect which mods you have installed.
 
-OpSec can conditionally block mod channels that are registered with the server to prevent detection.
+NullTrace can conditionally block mod channels that are registered with the server to prevent detection.
 This is enabled by default, its behavior is controlled by the mod whitelist and 
 
 ---
@@ -275,7 +275,7 @@ This is enabled by default, its behavior is controlled by the mod whitelist and
 ### Known-Pack Filtering
 
 Servers can probe your mod-injected pack identifiers that certain mods exposes to detect whether you're running a modded client or using certain mods. 
-OpSec intercepts the outgoing `ServerboundSelectKnownPacks` response and strips entries belonging to non-whitelisted mods. Real vanilla and auto whitelisted packs still pass through.
+NullTrace intercepts the outgoing `ServerboundSelectKnownPacks` response and strips entries belonging to non-whitelisted mods. Real vanilla and auto whitelisted packs still pass through.
 
 #### Spoof as Vanilla Behavior
 
@@ -346,7 +346,7 @@ Minecraft collects and sends telemetry data to Mojang, including:
 - Client configuration
 - Usage statistics
 
-OpSec blocks telemetry sending to Mojang when telemetry blocking is enabled. Does not effect gameplay.
+NullTrace blocks telemetry sending to Mojang when telemetry blocking is enabled. Does not effect gameplay.
 
 ---
 
@@ -362,8 +362,8 @@ OpSec blocks telemetry sending to Mojang when telemetry blocking is enabled. Doe
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/aurickk/OpSec.git
-   cd OpSec
+   git clone https://github.com/International-Duck-Incorporated/NullTrace.git
+   cd NullTrace
    ```
 
 2. **Build all versions**
@@ -407,6 +407,10 @@ Output JARs are located in `versions/<minecraft_version>/build/libs/`:
 | 26.2 | 26.2 |
 
 
+## Credits
+
+NullTrace is a fork of [OpSec](https://github.com/aurickk/OpSec) by aurickk, licensed under GPL-3.0.
+
 ## References
 
 - [ExploitPreventer](https://github.com/NikOverflow/ExploitPreventer) - Local URL blocking and server key resolution protection anti-measures
@@ -420,4 +424,4 @@ Output JARs are located in `versions/<minecraft_version>/build/libs/`:
 
 ## Disclaimer
 
-OpSec is a privacy tool designed to protect players from unwanted client fingerprinting and tracking. It is not intended or encouraged for use in bypassing server rules, evading bans, or gaining unfair advantages. Users are responsible for complying with the rules and terms of service of any server they connect to.
+NullTrace is a privacy tool designed to protect players from unwanted client fingerprinting and tracking. It is not intended or encouraged for use in bypassing server rules, evading bans, or gaining unfair advantages. Users are responsible for complying with the rules and terms of service of any server they connect to.
