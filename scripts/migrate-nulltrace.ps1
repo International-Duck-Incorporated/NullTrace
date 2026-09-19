@@ -35,14 +35,18 @@ Get-ChildItem -LiteralPath $Root -Recurse -File |
     } |
     ForEach-Object {
         $rel = $_.FullName.Substring($Root.Length + 1)
-        Replace-TextInFile $rel ([ordered]@{
-            'aurick.opsec' = 'net.nulltrace'
-            'aurick/opsec' = 'net/nulltrace'
-            'aurick\\opsec' = 'net\\nulltrace'
-            'OpSec' = 'NullTrace'
-            'Opsec' = 'NullTrace'
-            'opsec' = 'nulltrace'
-        })
+        foreach ($replacement in @(
+            @('aurick.opsec', 'net.nulltrace'),
+            @('aurick/opsec', 'net/nulltrace'),
+            @('aurick\\opsec', 'net\\nulltrace'),
+            @('OpSec', 'NullTrace'),
+            @('Opsec', 'NullTrace'),
+            @('opsec', 'nulltrace')
+        )) {
+            $content = Read-Utf8Raw $rel
+            $content = $content.Replace($replacement[0], $replacement[1])
+            Write-Utf8Raw $rel $content
+        }
     }
 
 # Restore upstream attribution URLs which were intentionally renamed by the generic text pass.
