@@ -38,9 +38,14 @@ import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.CommonComponents;
 import net.minecraft.network.chat.Component;
 
+// 26.3 ships LWJGL 3.4.3 (SDL3 line), which no longer includes lwjgl-tinyfd.
+// Native file dialogs are only available below 26.3; on 26.3+ account
+// import/export uses a fixed file in the game directory instead.
+//? if <26.3 {
 import org.lwjgl.PointerBuffer;
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.util.tinyfd.TinyFileDialogs;
+//?}
 
 import java.io.File;
 import java.nio.charset.StandardCharsets;
@@ -604,6 +609,7 @@ public class OpsecConfigScreen extends Screen {
     
     private void openImportDialog() {
         new Thread(() -> {
+            //? if <26.3 {
             try (MemoryStack stack = MemoryStack.stackPush()) {
                 PointerBuffer filters = stack.mallocPointer(1);
                 filters.put(stack.UTF8("*.json"));
@@ -620,6 +626,14 @@ public class OpsecConfigScreen extends Screen {
                 if (result == null) return;
                 
                 File file = new File(result);
+            //?} else {
+            /*try {
+                File file = new File(Minecraft.getInstance().gameDirectory, "opsec-accounts-import.json");
+                if (!file.isFile()) {
+                    Opsec.LOGGER.warn("[OpSec] No native file dialog on this version; expected import file at {}", file.getPath());
+                    return;
+                }
+            *///?}
                 String content = Files.readString(file.toPath(), StandardCharsets.UTF_8);
                 int imported = AccountManager.getInstance().importFromJson(content);
                 
@@ -638,6 +652,7 @@ public class OpsecConfigScreen extends Screen {
     
     private void openExportDialog() {
         new Thread(() -> {
+            //? if <26.3 {
             try (MemoryStack stack = MemoryStack.stackPush()) {
                 PointerBuffer filters = stack.mallocPointer(1);
                 filters.put(stack.UTF8("*.json"));
@@ -656,6 +671,10 @@ public class OpsecConfigScreen extends Screen {
                 if (!file.getName().toLowerCase().endsWith(".json")) {
                     file = new File(file.getParentFile(), file.getName() + ".json");
                 }
+            //?} else {
+            /*try {
+                File file = new File(Minecraft.getInstance().gameDirectory, "opsec-accounts-export.json");
+            *///?}
                 
                 String json = AccountManager.getInstance().exportToJson();
                 Files.write(file.toPath(), json.getBytes(StandardCharsets.UTF_8),
@@ -856,7 +875,8 @@ public class OpsecConfigScreen extends Screen {
                     onExportAction.run();
                 }
             }
-            wasMouseDown = isMouseDown;*/
+            wasMouseDown = isMouseDown;
+        }*/
         //?} elif >=1.21.9 {
         /*@Override
         protected void renderWidget(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
@@ -876,15 +896,16 @@ public class OpsecConfigScreen extends Screen {
                     onExportAction.run();
                 }
             }
-            wasMouseDown = isMouseDown;*/
+            wasMouseDown = isMouseDown;
+        }*/
         //?} else {
         @Override
         protected void renderWidget(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
             updateButtonPositions();
             importButton.render(graphics, mouseX, mouseY, partialTick);
             exportButton.render(graphics, mouseX, mouseY, partialTick);
-        //?}
         }
+        //?}
         
         // Forward mouse clicks to child buttons
         //? if <1.21.9 {
@@ -1326,6 +1347,16 @@ public class OpsecConfigScreen extends Screen {
 
     private void pollVersionLabelClick() {
         if (!versionOutdated || versionLabel == null) return;
+        //? if >=26.3 {
+        /*net.minecraft.client.MouseHandler mouse = this.minecraft.mouseHandler;
+        boolean isDown = mouse.isLeftPressed();
+        if (!isDown && versionLabelMouseWasDown) {
+            com.mojang.blaze3d.platform.Window win = this.minecraft.getWindow();
+            if (isOverVersionLabel(mouse.getScaledXPos(win), mouse.getScaledYPos(win))) {
+                openReleaseUrl();
+            }
+        }
+        *///?} else {
         long window = org.lwjgl.glfw.GLFW.glfwGetCurrentContext();
         boolean isDown = org.lwjgl.glfw.GLFW.glfwGetMouseButton(window, org.lwjgl.glfw.GLFW.GLFW_MOUSE_BUTTON_LEFT) == org.lwjgl.glfw.GLFW.GLFW_PRESS;
         if (!isDown && versionLabelMouseWasDown) {
@@ -1338,12 +1369,15 @@ public class OpsecConfigScreen extends Screen {
                 openReleaseUrl();
             }
         }
+        //?}
         versionLabelMouseWasDown = isDown;
     }
 
     private void openReleaseUrl() {
         try {
-            //? if >=1.21.11 {
+            //? if >=26.3 {
+            /*com.mojang.blaze3d.Blaze3D.openUri(java.net.URI.create(UpdateChecker.getReleaseUrl()));
+            *///?} elif >=1.21.11 {
             /*net.minecraft.util.Util.getPlatform().openUri(UpdateChecker.getReleaseUrl());*/
             //?} else {
             net.minecraft.Util.getPlatform().openUri(UpdateChecker.getReleaseUrl());

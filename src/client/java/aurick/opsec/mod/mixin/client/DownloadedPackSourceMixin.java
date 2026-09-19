@@ -38,6 +38,19 @@ public abstract class DownloadedPackSourceMixin {
         final java.util.UUID packId = idAndPath.id();
         if (!PackStripHandler.isWrapped(packId)) return real;
 
+        //? if >=26.3 {
+        /*return new FilePackResources.FileResourcesSupplier(file) {
+            @Override
+            public net.minecraft.server.packs.PackMetadataResources openMetadata(PackLocationInfo loc) {
+                return real.openMetadata(loc);
+            }
+
+            @Override
+            public java.util.stream.Stream<PackResources> openResources(PackLocationInfo loc, Pack.Metadata md) {
+                return real.openResources(loc, md).map(res -> new LangOnlyPackResources(res, packId));
+            }
+        };
+        *///?} else {
         return new FilePackResources.FileResourcesSupplier(file) {
             @Override
             public PackResources openPrimary(PackLocationInfo loc) {
@@ -49,6 +62,7 @@ public abstract class DownloadedPackSourceMixin {
                 return new LangOnlyPackResources(real.openFull(loc, md), packId);
             }
         };
+        //?}
     }
 }
 //?} elif >=1.20.3 {

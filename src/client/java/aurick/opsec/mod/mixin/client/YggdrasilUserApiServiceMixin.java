@@ -3,7 +3,13 @@ package aurick.opsec.mod.mixin.client;
 import aurick.opsec.mod.Opsec;
 import aurick.opsec.mod.config.OpsecConfig;
 import com.mojang.authlib.minecraft.TelemetrySession;
+// authlib 10 (MC 26.3) removed com.mojang.authlib.yggdrasil; the UserApiService
+// implementation is now com.mojang.authlib.services.MinecraftServicesUserApiService.
+//? if >=26.3 {
+/*import com.mojang.authlib.services.MinecraftServicesUserApiService;
+*///?} else {
 import com.mojang.authlib.yggdrasil.YggdrasilUserApiService;
+//?}
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -20,7 +26,11 @@ import java.util.concurrent.Executor;
  * Based on No Chat Reports by Aizistral-Studios:
  * https://github.com/Aizistral-Studios/No-Chat-Reports
  */
+//? if >=26.3 {
+/*@Mixin(value = MinecraftServicesUserApiService.class, remap = false)
+*///?} else {
 @Mixin(value = YggdrasilUserApiService.class, remap = false)
+//?}
 public class YggdrasilUserApiServiceMixin {
     
     /**

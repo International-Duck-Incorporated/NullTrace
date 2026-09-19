@@ -37,6 +37,9 @@ jobs:
         shell: pwsh
         run: ./scripts/migrate-nulltrace.ps1
 
+      - name: Set active Stonecutter version
+        run: ./gradlew --no-daemon "Set active project to ${{ matrix.minecraft }}"
+
       - name: Build
         run: ./gradlew --no-daemon :${{ matrix.minecraft }}:build
 

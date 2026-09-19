@@ -6,7 +6,13 @@ import aurick.opsec.mod.mixin.client.MinecraftAccessor;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.mojang.authlib.minecraft.UserApiService;
+// authlib 10 (MC 26.3) removed the com.mojang.authlib.yggdrasil package; service
+// creation moved to com.mojang.authlib.services.MinecraftServicesDiscoveryService.
+//? if >=26.3 {
+/*import com.mojang.authlib.services.MinecraftServicesDiscoveryService;
+*///?} else {
 import com.mojang.authlib.yggdrasil.YggdrasilAuthenticationService;
+//?}
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.User;
 import net.minecraft.client.multiplayer.ProfileKeyPairManager;
@@ -343,7 +349,11 @@ public class SessionAccount implements Account {
             accessor.opsec$setUser(newUser);
             
             // Reinitialize authentication services
+            //? if >=26.3 {
+            /*MinecraftServicesDiscoveryService authService = MinecraftServicesDiscoveryService.create(mc.getProxy());
+            *///?} else {
             YggdrasilAuthenticationService authService = new YggdrasilAuthenticationService(mc.getProxy());
+            //?}
             
             // Reinitialize user API service (needed for chat signing)
             UserApiService userApiService = authService.createUserApiService(accessToken);
@@ -358,7 +368,12 @@ public class SessionAccount implements Account {
             accessor.opsec$setProfileKeyPairManager(profileKeyPairManager);
             
             // Reinitialize social manager
-            //? if >=26.2 {
+            //? if >=26.3 {
+            /*com.mojang.authlib.services.FriendsService friendsService = authService.createFriendsService(accessToken);
+            net.minecraft.client.gui.screens.social.RemoteFriendListUpdateHandler updateHandler =
+                    new net.minecraft.client.gui.screens.social.RemoteFriendListUpdateHandler(friendsService, mc);
+            PlayerSocialManager socialManager = new PlayerSocialManager(mc, userApiService, friendsService, updateHandler);
+            *///?} elif >=26.2 {
             /*com.mojang.authlib.yggdrasil.FriendsService friendsService = authService.createFriendsService(accessToken);
             net.minecraft.client.gui.screens.social.RemoteFriendListUpdateHandler updateHandler =
                     new net.minecraft.client.gui.screens.social.RemoteFriendListUpdateHandler(friendsService, mc);
