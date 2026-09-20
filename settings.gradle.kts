@@ -1,9 +1,14 @@
 pluginManagement {
     repositories {
+        // The Gradle Plugin Portal mirrors the Stonecutter plugin and is listed first
+        // on purpose: maven.kikugie.dev intermittently fails to respond, and Gradle
+        // disables a repository for the rest of the build when it errors rather than
+        // silently falling through. Keeping the flaky host first therefore breaks
+        // resolution even though a later repository has the artifact.
+        gradlePluginPortal()
         maven("https://maven.kikugie.dev/releases")
         maven("https://maven.fabricmc.net/")
         mavenCentral()
-        gradlePluginPortal()
     }
 }
 

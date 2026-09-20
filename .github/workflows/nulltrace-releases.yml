@@ -35,8 +35,32 @@ jobs:
           distribution: temurin
           java-version: '25'
 
+      - name: Cache Gradle dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ runner.os }}-${{ matrix.minecraft }}-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties', 'versions/*/gradle.properties') }}
+          restore-keys: |
+            gradle-${{ runner.os }}-${{ matrix.minecraft }}-
+            gradle-${{ runner.os }}-
+
       - name: Set active Stonecutter version
-        run: ./gradlew --no-daemon "Set active project to ${{ matrix.minecraft }}"
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Plugin resolution occasionally fails on a transient upstream Maven
+          # outage. Retry with backoff before failing the job.
+          for attempt in 1 2 3; do
+            if ./gradlew --no-daemon "Set active project to ${{ matrix.minecraft }}"; then
+              exit 0
+            fi
+            echo "::warning::Stonecutter setup attempt ${attempt} failed; retrying in $((attempt * 20))s"
+            sleep $((attempt * 20))
+          done
+          echo "::error::Stonecutter setup failed after 3 attempts"
+          exit 1
 
       - name: Build
         run: ./gradlew --no-daemon :${{ matrix.minecraft }}:build --stacktrace
