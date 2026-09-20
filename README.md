@@ -9,8 +9,6 @@
 </p>
 
 <p align="center">
-  <a href="https://modrinth.com/mod/nulltrace"><img alt="Modrinth" src="https://img.shields.io/badge/Modrinth-00AF5C?logo=modrinth&logoColor=white"></a>
-  <a href="https://www.curseforge.com/minecraft/mc-mods/nulltrace"><img alt="CurseForge" src="https://img.shields.io/badge/CurseForge-F16436?logo=curseforge&logoColor=white"></a>
   <a href="https://github.com/International-Duck-Incorporated/NullTrace/releases"><img alt="GitHub Releases" src="https://img.shields.io/github/v/release/International-Duck-Incorporated/NullTrace?display_name=tag&logo=github&logoColor=white"></a>
   <a href="https://github.com/International-Duck-Incorporated/NullTrace/actions"><img alt="Build" src="https://img.shields.io/github/actions/workflow/status/International-Duck-Incorporated/NullTrace/release.yml?branch=main&label=build&logo=github"></a>
   <a href="https://github.com/International-Duck-Incorporated/NullTrace/blob/main/LICENSE"><img alt="License" src="https://img.shields.io/badge/License-GPL--3.0-blue.svg"></a>
