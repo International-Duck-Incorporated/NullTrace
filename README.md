@@ -136,7 +136,7 @@ When enabled, NullTrace blocks Minecraft telemetry requests to Mojang. This does
 
 Open the **NullTrace** button in the multiplayer screen or open the configuration through [Mod Menu](https://modrinth.com/mod/modmenu).
 
-<img width="1465" height="820" alt="NullTrace configuration screen" src="https://github.com/user-attachments/assets/c69a768b-60ac-4f78-9705-184f6c4e4495" />
+<img alt="NullTrace configuration screen" src="docs/assets/screenshots/config-protection.png" width="100%">
 
 Changes made while connected to a server may require reconnecting before every protection is active.
 
@@ -165,7 +165,14 @@ Changes made while connected to a server may require reconnecting before every p
 
 Whitelisting is necessary for mods that intentionally communicate with servers. Examples include voice-chat or map-related functionality.
 
-<img width="853" height="478" alt="NullTrace whitelist settings" src="https://github.com/user-attachments/assets/6ae423de-dd98-47c1-a617-f6df747c9293" />
+<img alt="NullTrace whitelist settings in CUSTOM mode" src="docs/assets/screenshots/config-whitelist-custom.png" width="100%">
+
+The three whitelist modes:
+
+| BLOCK ALL | AUTO | CUSTOM |
+| --------- | ---- | ------ |
+| <img alt="Whitelist mode BLOCK ALL" src="docs/assets/screenshots/config-whitelist-blockall.png"> | <img alt="Whitelist mode AUTO" src="docs/assets/screenshots/config-whitelist-auto.png"> | <img alt="Whitelist mode CUSTOM" src="docs/assets/screenshots/config-whitelist-custom.png"> |
+| Every mod is blocked | Mods that register network channels are allowed automatically | Each installed mod is toggled individually |
 
 ### Diagnostics
 
@@ -177,11 +184,15 @@ Whitelisting is necessary for mods that intentionally communicate with servers. 
 | **Debug Alerts**   | Report all probed keys, including unchanged values |
 | **Debug Command**  | Enable `/nulltrace`                                |
 
+<img alt="NullTrace diagnostics and debug settings" src="docs/assets/screenshots/config-misc.png" width="100%">
+
 ### Accounts
 
 The built-in account manager supports session-based login, account switching, token validation, import/export, and optional offline accounts.
 
 Treat Minecraft session tokens as credentials. Never paste them into issues, screenshots, Discord messages, or other public locations.
+
+<img alt="NullTrace account manager" src="docs/assets/screenshots/config-accounts.png" width="100%">
 
 ## Debug Command
 
@@ -318,6 +329,7 @@ The current repository layout is broadly:
 NullTrace/
 ├── .github/workflows/       # CI and release automation
 ├── docs/assets/             # Project artwork
+│   └── screenshots/         # In-game UI screenshots used by this README
 ├── src/main/                # Shared/common code
 ├── src/client/              # Client-only code and mixins
 ├── versions/
