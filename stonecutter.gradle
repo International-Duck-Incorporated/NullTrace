@@ -7,11 +7,11 @@ stonecutter.active '26.2' /* [SC] DO NOT EDIT */
 tasks.register('buildAll') {
     group = 'build'
     description = 'Builds all supported Minecraft versions'
-    dependsOn ':26.2:build', ':26.3:build'
+    dependsOn ':1.21.11:build', ':26.1:build', ':26.2:build', ':26.3:build'
 }
 
 tasks.register('remapAll') {
     group = 'build'
     description = 'Builds final artifacts for all supported Minecraft versions'
-    dependsOn ':26.2:jar', ':26.3:jar'
+    dependsOn ':1.21.11:remapJar', ':26.1:jar', ':26.2:jar', ':26.3:jar'
 }

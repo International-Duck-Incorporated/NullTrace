@@ -1,0 +1,549 @@
+diff --git a/.github/workflows/nulltrace-releases.yml b/.github/workflows/nulltrace-releases.yml
+index d767da6..48a0fb2 100644
+--- a/.github/workflows/nulltrace-releases.yml
++++ b/.github/workflows/nulltrace-releases.yml
+@@ -22,7 +22,7 @@ jobs:
+     strategy:
+       fail-fast: false
+       matrix:
+-        minecraft: ['26.2', '26.3']
++        minecraft: ['1.21.11', '26.1', '26.2', '26.3']
+     steps:
+       - name: Checkout
+         uses: actions/checkout@v5
+diff --git a/.github/workflows/release.yml b/.github/workflows/release.yml
+index a22c7d3..c0e7586 100644
+--- a/.github/workflows/release.yml
++++ b/.github/workflows/release.yml
+@@ -22,7 +22,7 @@ jobs:
+     strategy:
+       fail-fast: false
+       matrix:
+-        minecraft: ['26.2', '26.3']
++        minecraft: ['1.21.11', '26.1', '26.2', '26.3']
+     steps:
+       - name: Checkout
+         uses: actions/checkout@v5
+diff --git a/README.md b/README.md
+index e2148cc..12d6d55 100644
+--- a/README.md
++++ b/README.md
+@@ -210,12 +210,16 @@ When diagnostics are enabled, common alerts include:
+ 
+ The current `main` branch is maintained for:
+ 
+-| Minecraft | Java | Fabric Loader | Fabric API   |
+-| --------- | ---- | ------------- | ------------ |
+-| **26.2**  | 25   | 0.19.5        | 0.160.0+26.2 |
+-| **26.3**  | 25   | 0.19.5        | 0.160.5+26.3 |
++| Minecraft    | Covers          | Java | Fabric Loader | Fabric API     |
++| ------------ | --------------- | ---- | ------------- | -------------- |
++| **1.21.11**  | 1.21.11         | 21   | 0.19.3        | 0.140.2+1.21.11 |
++| **26.1**     | 26.1 – 26.1.2   | 25   | 0.19.3        | 0.146.1+26.1.2 |
++| **26.2**     | 26.2            | 25   | 0.19.5        | 0.160.0+26.2   |
++| **26.3**     | 26.3            | 25   | 0.19.5        | 0.160.5+26.3   |
+ 
+-Minecraft 26.1 and older targets are not part of the current `versions/` tree on `main`.
++The `26.1` target is built against 26.1.2 and declares `>=26.1 <26.2`, so a single JAR
++covers the whole 26.1 line. Targets older than 1.21.11 are not part of the current
++`versions/` tree on `main`.
+ 
+ ### Mod Compatibility
+ 
+@@ -236,7 +240,7 @@ NullTrace is currently **GitHub-only**.
+ 
+ Go to the [GitHub Releases](https://github.com/International-Duck-Incorporated/NullTrace/releases) page and download the JAR matching your Minecraft version.
+ 
+-The `main` branch currently produces automated pre-release/nightly builds for Minecraft 26.2 and 26.3.
++The `main` branch currently produces automated pre-release/nightly builds for Minecraft 1.21.11, 26.1, 26.2 and 26.3.
+ 
+ ### Manual Installation
+ 
+@@ -254,7 +258,8 @@ NullTrace uses [Fabric Loom](https://github.com/FabricMC/fabric-loom) and [Stone
+ 
+ ### Requirements
+ 
+-* Java 25 for the current 26.2 and 26.3 targets
++* Java 25 for the 26.1, 26.2 and 26.3 targets; Java 21 or newer for 1.21.11
++  (a Java 25 JDK can build every target, since 1.21.11 is compiled with `--release 21`)
+ * Git
+ * No system Gradle installation is required; the repository includes the Gradle wrapper
+ 
+@@ -265,32 +270,36 @@ git clone https://github.com/International-Duck-Incorporated/NullTrace.git
+ cd NullTrace
+ ```
+ 
+-### Build Minecraft 26.2
++### Build A Single Minecraft Version
++
++Replace `<version>` with `1.21.11`, `26.1`, `26.2` or `26.3`.
+ 
+ Linux/macOS:
+ 
+ ```bash
+-./gradlew :26.2:build
++./gradlew :<version>:build
+ ```
+ 
+ Windows:
+ 
+ ```powershell
+-.\gradlew.bat :26.2:build
++.\gradlew.bat :<version>:build
+ ```
+ 
+-### Build Minecraft 26.3
++For example, `./gradlew :26.3:build`.
++
++### Build Every Version
+ 
+ Linux/macOS:
+ 
+ ```bash
+-./gradlew :26.3:build
++./gradlew buildAll
+ ```
+ 
+ Windows:
+ 
+ ```powershell
+-.\gradlew.bat :26.3:build
++.\gradlew.bat buildAll
+ ```
+ 
+ Generated JARs are written below:
+@@ -312,6 +321,8 @@ NullTrace/
+ ├── src/main/                # Shared/common code
+ ├── src/client/              # Client-only code and mixins
+ ├── versions/
++│   ├── 1.21.11/
++│   ├── 26.1/
+ │   ├── 26.2/
+ │   └── 26.3/
+ ├── build.gradle
+diff --git a/settings.gradle.kts b/settings.gradle.kts
+index fb4531f..2517fe7 100644
+--- a/settings.gradle.kts
++++ b/settings.gradle.kts
+@@ -16,7 +16,7 @@ stonecutter {
+     centralScript = "build.gradle"
+ 
+     create(rootProject) {
+-        versions("26.2", "26.3")
++        versions("1.21.11", "26.1", "26.2", "26.3")
+         vcsVersion = "26.3"
+     }
+ }
+diff --git a/src/client/java/net/nulltrace/mod/config/NullTraceConfigScreen.java b/src/client/java/net/nulltrace/mod/config/NullTraceConfigScreen.java
+index e11ca93..80ba43e 100644
+--- a/src/client/java/net/nulltrace/mod/config/NullTraceConfigScreen.java
++++ b/src/client/java/net/nulltrace/mod/config/NullTraceConfigScreen.java
+@@ -194,8 +194,10 @@ public class NullTraceConfigScreen extends Screen {
+         this.versionOutdated = UpdateChecker.getLatestVersion() != null
+                 && !UpdateChecker.getLatestVersion().equals(UpdateChecker.getCurrentVersion());
+         String color = versionOutdated ? "\u00A7c" : "\u00A7a";
+-        Component versionText = Component.literal(color + currentVersion);
+-        int textWidth = this.font.width(currentVersion);
++        // Brand the footer tag: dimmed mod name followed by the status-coloured version.
++        String versionPlain = "NullTrace " + currentVersion;
++        Component versionText = Component.literal("\u00A78NullTrace " + color + currentVersion);
++        int textWidth = this.font.width(versionPlain);
+         int labelHeight = 10;
+         int footerY = this.height - 36;
+         int labelY = footerY + (36 - labelHeight) / 2;
+diff --git a/src/main/resources/assets/nulltrace/nulltracelang/de_de.json b/src/main/resources/assets/nulltrace/nulltracelang/de_de.json
+index 3da31d3..fbc2f22 100644
+--- a/src/main/resources/assets/nulltrace/nulltracelang/de_de.json
++++ b/src/main/resources/assets/nulltrace/nulltracelang/de_de.json
+@@ -4,18 +4,18 @@
+   "nulltrace.tab.accounts": "Konten",
+   "nulltrace.tab.whitelist": "Whitelist",
+   "nulltrace.tab.misc": "Sonstiges",
+-  "nulltrace.section.clientBrand": "§f§lClient-Brand",
+-  "nulltrace.section.resourcePack": "§f§lRessourcenpaket-Schutz",
+-  "nulltrace.section.keyResolution": "§f§lSchlüsselauflösungs-Schutz",
+-  "nulltrace.section.privacy": "§f§lDatenschutz & Sicherheit",
+-  "nulltrace.section.alerts": "§f§lWarnungen & Protokollierung",
+-  "nulltrace.section.accounts": "§f§lKonten",
+-  "nulltrace.section.savedAccounts": "§f§lGespeicherte Konten",
+-  "nulltrace.section.addAccount": "§f§lKonto hinzufügen",
+-  "nulltrace.section.modWhitelist": "§f§lMod-Whitelist",
+-  "nulltrace.section.installedMods": "§f§lInstallierte Mods",
++  "nulltrace.section.clientBrand": "§c▌ §f§lClient-Brand",
++  "nulltrace.section.resourcePack": "§c▌ §f§lRessourcenpaket-Schutz",
++  "nulltrace.section.keyResolution": "§c▌ §f§lSchlüsselauflösungs-Schutz",
++  "nulltrace.section.privacy": "§c▌ §f§lDatenschutz & Sicherheit",
++  "nulltrace.section.alerts": "§c▌ §f§lWarnungen & Protokollierung",
++  "nulltrace.section.accounts": "§c▌ §f§lKonten",
++  "nulltrace.section.savedAccounts": "§c▌ §f§lGespeicherte Konten",
++  "nulltrace.section.addAccount": "§c▌ §f§lKonto hinzufügen",
++  "nulltrace.section.modWhitelist": "§c▌ §f§lMod-Whitelist",
++  "nulltrace.section.installedMods": "§c▌ §f§lInstallierte Mods",
+   "nulltrace.section.restartWarning": "§e⚠ Erfordert einen Spielneustart",
+-  "nulltrace.section.debug": "§f§lDebug",
++  "nulltrace.section.debug": "§c▌ §f§lDebug",
+   "nulltrace.account.current": "§7Aktuell: %s",
+   "nulltrace.whitelist.suffix.channels": " §7(%d Kanäle)",
+   "nulltrace.option.spoofAsVanilla": "Als Vanilla tarnen",
+diff --git a/src/main/resources/assets/nulltrace/nulltracelang/en_us.json b/src/main/resources/assets/nulltrace/nulltracelang/en_us.json
+index 9565d21..d942143 100644
+--- a/src/main/resources/assets/nulltrace/nulltracelang/en_us.json
++++ b/src/main/resources/assets/nulltrace/nulltracelang/en_us.json
+@@ -4,18 +4,18 @@
+   "nulltrace.tab.accounts": "Accounts",
+   "nulltrace.tab.whitelist": "Whitelist",
+   "nulltrace.tab.misc": "Misc",
+-  "nulltrace.section.clientBrand": "§f§lClient Brand",
+-  "nulltrace.section.resourcePack": "§f§lResource Pack Protection",
+-  "nulltrace.section.keyResolution": "§f§lKey Resolution Protection",
+-  "nulltrace.section.privacy": "§f§lPrivacy & Security",
+-  "nulltrace.section.alerts": "§f§lAlerts & Logging",
+-  "nulltrace.section.accounts": "§f§lAccounts",
+-  "nulltrace.section.savedAccounts": "§f§lSaved Accounts",
+-  "nulltrace.section.addAccount": "§f§lAdd Account",
+-  "nulltrace.section.modWhitelist": "§f§lMod Whitelist",
+-  "nulltrace.section.installedMods": "§f§lInstalled Mods",
++  "nulltrace.section.clientBrand": "§c▌ §f§lClient Brand",
++  "nulltrace.section.resourcePack": "§c▌ §f§lResource Pack Protection",
++  "nulltrace.section.keyResolution": "§c▌ §f§lKey Resolution Protection",
++  "nulltrace.section.privacy": "§c▌ §f§lPrivacy & Security",
++  "nulltrace.section.alerts": "§c▌ §f§lAlerts & Logging",
++  "nulltrace.section.accounts": "§c▌ §f§lAccounts",
++  "nulltrace.section.savedAccounts": "§c▌ §f§lSaved Accounts",
++  "nulltrace.section.addAccount": "§c▌ §f§lAdd Account",
++  "nulltrace.section.modWhitelist": "§c▌ §f§lMod Whitelist",
++  "nulltrace.section.installedMods": "§c▌ §f§lInstalled Mods",
+   "nulltrace.section.restartWarning": "§e⚠ Requires game restart to take effect",
+-  "nulltrace.section.debug": "§f§lDebug",
++  "nulltrace.section.debug": "§c▌ §f§lDebug",
+   "nulltrace.account.current": "§7Current: %s",
+   "nulltrace.whitelist.suffix.channels": " §7(%d channels)",
+   "nulltrace.option.spoofAsVanilla": "Spoof as Vanilla",
+diff --git a/src/main/resources/assets/nulltrace/nulltracelang/es_es.json b/src/main/resources/assets/nulltrace/nulltracelang/es_es.json
+index 84c9e12..99f17c7 100644
+--- a/src/main/resources/assets/nulltrace/nulltracelang/es_es.json
++++ b/src/main/resources/assets/nulltrace/nulltracelang/es_es.json
+@@ -4,18 +4,18 @@
+   "nulltrace.tab.accounts": "Cuentas",
+   "nulltrace.tab.whitelist": "Whitelist",
+   "nulltrace.tab.misc": "Varios",
+-  "nulltrace.section.clientBrand": "§f§lMarca del cliente",
+-  "nulltrace.section.resourcePack": "§f§lProtección de paquetes de recursos",
+-  "nulltrace.section.keyResolution": "§f§lProtección de resolución de claves",
+-  "nulltrace.section.privacy": "§f§lPrivacidad y seguridad",
+-  "nulltrace.section.alerts": "§f§lAlertas y registro",
+-  "nulltrace.section.accounts": "§f§lCuentas",
+-  "nulltrace.section.savedAccounts": "§f§lCuentas guardadas",
+-  "nulltrace.section.addAccount": "§f§lAñadir cuenta",
+-  "nulltrace.section.modWhitelist": "§f§lLista blanca de mods",
+-  "nulltrace.section.installedMods": "§f§lMods instalados",
++  "nulltrace.section.clientBrand": "§c▌ §f§lMarca del cliente",
++  "nulltrace.section.resourcePack": "§c▌ §f§lProtección de paquetes de recursos",
++  "nulltrace.section.keyResolution": "§c▌ §f§lProtección de resolución de claves",
++  "nulltrace.section.privacy": "§c▌ §f§lPrivacidad y seguridad",
++  "nulltrace.section.alerts": "§c▌ §f§lAlertas y registro",
++  "nulltrace.section.accounts": "§c▌ §f§lCuentas",
++  "nulltrace.section.savedAccounts": "§c▌ §f§lCuentas guardadas",
++  "nulltrace.section.addAccount": "§c▌ §f§lAñadir cuenta",
++  "nulltrace.section.modWhitelist": "§c▌ §f§lLista blanca de mods",
++  "nulltrace.section.installedMods": "§c▌ §f§lMods instalados",
+   "nulltrace.section.restartWarning": "§e⚠ Requiere reiniciar el juego para aplicarse",
+-  "nulltrace.section.debug": "§f§lDepuración",
++  "nulltrace.section.debug": "§c▌ §f§lDepuración",
+   "nulltrace.account.current": "§7Actual: %s",
+   "nulltrace.whitelist.suffix.channels": " §7(%d canales)",
+   "nulltrace.option.spoofAsVanilla": "Suplantar como Vanilla",
+diff --git a/src/main/resources/assets/nulltrace/nulltracelang/hi_in.json b/src/main/resources/assets/nulltrace/nulltracelang/hi_in.json
+index 06b16d0..160febd 100644
+--- a/src/main/resources/assets/nulltrace/nulltracelang/hi_in.json
++++ b/src/main/resources/assets/nulltrace/nulltracelang/hi_in.json
+@@ -4,18 +4,18 @@
+   "nulltrace.tab.accounts": "अकाउंट्स",
+   "nulltrace.tab.whitelist": "व्हाइटलिस्ट",
+   "nulltrace.tab.misc": "अन्य",
+-  "nulltrace.section.clientBrand": "§f§lक्लाइंट ब्रांड",
+-  "nulltrace.section.resourcePack": "§f§lरिसोर्स पैक सुरक्षा",
+-  "nulltrace.section.keyResolution": "§f§lकी रिज़ॉल्यूशन सुरक्षा",
+-  "nulltrace.section.privacy": "§f§lगोपनीयता और सुरक्षा",
+-  "nulltrace.section.alerts": "§f§lअलर्ट और लॉगिंग",
+-  "nulltrace.section.accounts": "§f§lअकाउंट",
+-  "nulltrace.section.savedAccounts": "§f§lसहेजे गए अकाउंट",
+-  "nulltrace.section.addAccount": "§f§lअकाउंट जोड़ें",
+-  "nulltrace.section.modWhitelist": "§f§lमॉड व्हाइटलिस्ट",
+-  "nulltrace.section.installedMods": "§f§lइंस्टॉल किए गए मॉड",
++  "nulltrace.section.clientBrand": "§c▌ §f§lक्लाइंट ब्रांड",
++  "nulltrace.section.resourcePack": "§c▌ §f§lरिसोर्स पैक सुरक्षा",
++  "nulltrace.section.keyResolution": "§c▌ §f§lकी रिज़ॉल्यूशन सुरक्षा",
++  "nulltrace.section.privacy": "§c▌ §f§lगोपनीयता और सुरक्षा",
++  "nulltrace.section.alerts": "§c▌ §f§lअलर्ट और लॉगिंग",
++  "nulltrace.section.accounts": "§c▌ §f§lअकाउंट",
++  "nulltrace.section.savedAccounts": "§c▌ §f§lसहेजे गए अकाउंट",
++  "nulltrace.section.addAccount": "§c▌ §f§lअकाउंट जोड़ें",
++  "nulltrace.section.modWhitelist": "§c▌ §f§lमॉड व्हाइटलिस्ट",
++  "nulltrace.section.installedMods": "§c▌ §f§lइंस्टॉल किए गए मॉड",
+   "nulltrace.section.restartWarning": "§e⚠ लागू होने के लिए गेम पुनः आरंभ करें",
+-  "nulltrace.section.debug": "§f§lडिबग",
++  "nulltrace.section.debug": "§c▌ §f§lडिबग",
+   "nulltrace.account.current": "§7वर्तमान: %s",
+   "nulltrace.whitelist.suffix.channels": " §7(%d चैनल)",
+   "nulltrace.option.spoofAsVanilla": "वैनिला के रूप में दिखाएं",
+diff --git a/src/main/resources/assets/nulltrace/nulltracelang/ja_jp.json b/src/main/resources/assets/nulltrace/nulltracelang/ja_jp.json
+index 5bfa91d..9ac03ae 100644
+--- a/src/main/resources/assets/nulltrace/nulltracelang/ja_jp.json
++++ b/src/main/resources/assets/nulltrace/nulltracelang/ja_jp.json
+@@ -4,18 +4,18 @@
+   "nulltrace.tab.accounts": "アカウント",
+   "nulltrace.tab.whitelist": "ホワイトリスト",
+   "nulltrace.tab.misc": "その他",
+-  "nulltrace.section.clientBrand": "§f§lクライアントブランド",
+-  "nulltrace.section.resourcePack": "§f§lリソースパック保護",
+-  "nulltrace.section.keyResolution": "§f§lキー解決の保護",
+-  "nulltrace.section.privacy": "§f§lプライバシーとセキュリティ",
+-  "nulltrace.section.alerts": "§f§lアラートとログ",
+-  "nulltrace.section.accounts": "§f§lアカウント",
+-  "nulltrace.section.savedAccounts": "§f§l保存済みアカウント",
+-  "nulltrace.section.addAccount": "§f§lアカウントを追加",
+-  "nulltrace.section.modWhitelist": "§f§lModホワイトリスト",
+-  "nulltrace.section.installedMods": "§f§lインストール済みMod",
++  "nulltrace.section.clientBrand": "§c▌ §f§lクライアントブランド",
++  "nulltrace.section.resourcePack": "§c▌ §f§lリソースパック保護",
++  "nulltrace.section.keyResolution": "§c▌ §f§lキー解決の保護",
++  "nulltrace.section.privacy": "§c▌ §f§lプライバシーとセキュリティ",
++  "nulltrace.section.alerts": "§c▌ §f§lアラートとログ",
++  "nulltrace.section.accounts": "§c▌ §f§lアカウント",
++  "nulltrace.section.savedAccounts": "§c▌ §f§l保存済みアカウント",
++  "nulltrace.section.addAccount": "§c▌ §f§lアカウントを追加",
++  "nulltrace.section.modWhitelist": "§c▌ §f§lModホワイトリスト",
++  "nulltrace.section.installedMods": "§c▌ §f§lインストール済みMod",
+   "nulltrace.section.restartWarning": "§e⚠ 反映にはゲームの再起動が必要です",
+-  "nulltrace.section.debug": "§f§lデバッグ",
++  "nulltrace.section.debug": "§c▌ §f§lデバッグ",
+   "nulltrace.account.current": "§7現在: %s",
+   "nulltrace.whitelist.suffix.channels": " §7(%d チャンネル)",
+   "nulltrace.option.spoofAsVanilla": "バニラとして偽装",
+diff --git a/src/main/resources/assets/nulltrace/nulltracelang/ko_kr.json b/src/main/resources/assets/nulltrace/nulltracelang/ko_kr.json
+index 32c80e5..4524206 100644
+--- a/src/main/resources/assets/nulltrace/nulltracelang/ko_kr.json
++++ b/src/main/resources/assets/nulltrace/nulltracelang/ko_kr.json
+@@ -4,18 +4,18 @@
+   "nulltrace.tab.accounts": "계정",
+   "nulltrace.tab.whitelist": "화이트리스트",
+   "nulltrace.tab.misc": "기타",
+-  "nulltrace.section.clientBrand": "§f§l클라이언트 브랜드",
+-  "nulltrace.section.resourcePack": "§f§l리소스 팩 보호",
+-  "nulltrace.section.keyResolution": "§f§l키 해석 보호",
+-  "nulltrace.section.privacy": "§f§l개인정보 및 보안",
+-  "nulltrace.section.alerts": "§f§l알림 및 로깅",
+-  "nulltrace.section.accounts": "§f§l계정",
+-  "nulltrace.section.savedAccounts": "§f§l저장된 계정",
+-  "nulltrace.section.addAccount": "§f§l계정 추가",
+-  "nulltrace.section.modWhitelist": "§f§l모드 화이트리스트",
+-  "nulltrace.section.installedMods": "§f§l설치된 모드",
++  "nulltrace.section.clientBrand": "§c▌ §f§l클라이언트 브랜드",
++  "nulltrace.section.resourcePack": "§c▌ §f§l리소스 팩 보호",
++  "nulltrace.section.keyResolution": "§c▌ §f§l키 해석 보호",
++  "nulltrace.section.privacy": "§c▌ §f§l개인정보 및 보안",
++  "nulltrace.section.alerts": "§c▌ §f§l알림 및 로깅",
++  "nulltrace.section.accounts": "§c▌ §f§l계정",
++  "nulltrace.section.savedAccounts": "§c▌ §f§l저장된 계정",
++  "nulltrace.section.addAccount": "§c▌ §f§l계정 추가",
++  "nulltrace.section.modWhitelist": "§c▌ §f§l모드 화이트리스트",
++  "nulltrace.section.installedMods": "§c▌ §f§l설치된 모드",
+   "nulltrace.section.restartWarning": "§e⚠ 적용하려면 게임을 재시작해야 합니다",
+-  "nulltrace.section.debug": "§f§l디버그",
++  "nulltrace.section.debug": "§c▌ §f§l디버그",
+   "nulltrace.account.current": "§7현재: %s",
+   "nulltrace.whitelist.suffix.channels": " §7(채널 %d개)",
+   "nulltrace.option.spoofAsVanilla": "바닐라로 위장",
+diff --git a/src/main/resources/assets/nulltrace/nulltracelang/ru_ru.json b/src/main/resources/assets/nulltrace/nulltracelang/ru_ru.json
+index 792cca1..8fc8c4e 100644
+--- a/src/main/resources/assets/nulltrace/nulltracelang/ru_ru.json
++++ b/src/main/resources/assets/nulltrace/nulltracelang/ru_ru.json
+@@ -4,18 +4,18 @@
+   "nulltrace.tab.accounts": "Аккаунты",
+   "nulltrace.tab.whitelist": "Белый список",
+   "nulltrace.tab.misc": "Прочее",
+-  "nulltrace.section.clientBrand": "§f§lБренд клиента",
+-  "nulltrace.section.resourcePack": "§f§lЗащита наборов ресурсов",
+-  "nulltrace.section.keyResolution": "§f§lЗащита разрешения ключей",
+-  "nulltrace.section.privacy": "§f§lПриватность и безопасность",
+-  "nulltrace.section.alerts": "§f§lОповещения и журналирование",
+-  "nulltrace.section.accounts": "§f§lАккаунты",
+-  "nulltrace.section.savedAccounts": "§f§lСохранённые аккаунты",
+-  "nulltrace.section.addAccount": "§f§lДобавить аккаунт",
+-  "nulltrace.section.modWhitelist": "§f§lБелый список модов",
+-  "nulltrace.section.installedMods": "§f§lУстановленные моды",
++  "nulltrace.section.clientBrand": "§c▌ §f§lБренд клиента",
++  "nulltrace.section.resourcePack": "§c▌ §f§lЗащита наборов ресурсов",
++  "nulltrace.section.keyResolution": "§c▌ §f§lЗащита разрешения ключей",
++  "nulltrace.section.privacy": "§c▌ §f§lПриватность и безопасность",
++  "nulltrace.section.alerts": "§c▌ §f§lОповещения и журналирование",
++  "nulltrace.section.accounts": "§c▌ §f§lАккаунты",
++  "nulltrace.section.savedAccounts": "§c▌ §f§lСохранённые аккаунты",
++  "nulltrace.section.addAccount": "§c▌ §f§lДобавить аккаунт",
++  "nulltrace.section.modWhitelist": "§c▌ §f§lБелый список модов",
++  "nulltrace.section.installedMods": "§c▌ §f§lУстановленные моды",
+   "nulltrace.section.restartWarning": "§e⚠ Требуется перезапуск игры",
+-  "nulltrace.section.debug": "§f§lОтладка",
++  "nulltrace.section.debug": "§c▌ §f§lОтладка",
+   "nulltrace.account.current": "§7Текущий: %s",
+   "nulltrace.whitelist.suffix.channels": " §7(%d каналов)",
+   "nulltrace.option.spoofAsVanilla": "Маскировка под Ваниллу",
+diff --git a/src/main/resources/assets/nulltrace/nulltracelang/vi_vn.json b/src/main/resources/assets/nulltrace/nulltracelang/vi_vn.json
+index d1c4256..76e6f38 100644
+--- a/src/main/resources/assets/nulltrace/nulltracelang/vi_vn.json
++++ b/src/main/resources/assets/nulltrace/nulltracelang/vi_vn.json
+@@ -4,18 +4,18 @@
+   "nulltrace.tab.accounts": "Tài khoản",
+   "nulltrace.tab.whitelist": "Danh sách trắng",
+   "nulltrace.tab.misc": "Khác",
+-  "nulltrace.section.clientBrand": "§f§lThương hiệu Client",
+-  "nulltrace.section.resourcePack": "§f§lBảo vệ Gói tài nguyên",
+-  "nulltrace.section.keyResolution": "§f§lBảo vệ phân giải khóa",
+-  "nulltrace.section.privacy": "§f§lQuyền riêng tư & Bảo mật",
+-  "nulltrace.section.alerts": "§f§lCảnh báo & Ghi nhật ký",
+-  "nulltrace.section.accounts": "§f§lTài khoản",
+-  "nulltrace.section.savedAccounts": "§f§lTài khoản đã lưu",
+-  "nulltrace.section.addAccount": "§f§lThêm tài khoản",
+-  "nulltrace.section.modWhitelist": "§f§lDanh sách trắng mod",
+-  "nulltrace.section.installedMods": "§f§lMod đã cài đặt",
++  "nulltrace.section.clientBrand": "§c▌ §f§lThương hiệu Client",
++  "nulltrace.section.resourcePack": "§c▌ §f§lBảo vệ Gói tài nguyên",
++  "nulltrace.section.keyResolution": "§c▌ §f§lBảo vệ phân giải khóa",
++  "nulltrace.section.privacy": "§c▌ §f§lQuyền riêng tư & Bảo mật",
++  "nulltrace.section.alerts": "§c▌ §f§lCảnh báo & Ghi nhật ký",
++  "nulltrace.section.accounts": "§c▌ §f§lTài khoản",
++  "nulltrace.section.savedAccounts": "§c▌ §f§lTài khoản đã lưu",
++  "nulltrace.section.addAccount": "§c▌ §f§lThêm tài khoản",
++  "nulltrace.section.modWhitelist": "§c▌ §f§lDanh sách trắng mod",
++  "nulltrace.section.installedMods": "§c▌ §f§lMod đã cài đặt",
+   "nulltrace.section.restartWarning": "§e⚠ Cần khởi động lại trò chơi để áp dụng",
+-  "nulltrace.section.debug": "§f§lGỡ lỗi",
++  "nulltrace.section.debug": "§c▌ §f§lGỡ lỗi",
+   "nulltrace.account.current": "§7Hiện tại: %s",
+   "nulltrace.whitelist.suffix.channels": " §7(%d kênh)",
+   "nulltrace.option.spoofAsVanilla": "Giả mạo thành Vanilla",
+diff --git a/src/main/resources/assets/nulltrace/nulltracelang/zh_cn.json b/src/main/resources/assets/nulltrace/nulltracelang/zh_cn.json
+index 76a604d..8ff8fea 100644
+--- a/src/main/resources/assets/nulltrace/nulltracelang/zh_cn.json
++++ b/src/main/resources/assets/nulltrace/nulltracelang/zh_cn.json
+@@ -4,18 +4,18 @@
+   "nulltrace.tab.accounts": "账户",
+   "nulltrace.tab.whitelist": "白名单",
+   "nulltrace.tab.misc": "杂项",
+-  "nulltrace.section.clientBrand": "§f§l客户端品牌",
+-  "nulltrace.section.resourcePack": "§f§l资源包保护",
+-  "nulltrace.section.keyResolution": "§f§l键解析保护",
+-  "nulltrace.section.privacy": "§f§l隐私与安全",
+-  "nulltrace.section.alerts": "§f§l提醒与日志",
+-  "nulltrace.section.accounts": "§f§l账户",
+-  "nulltrace.section.savedAccounts": "§f§l已保存的账户",
+-  "nulltrace.section.addAccount": "§f§l添加账户",
+-  "nulltrace.section.modWhitelist": "§f§l模组白名单",
+-  "nulltrace.section.installedMods": "§f§l已安装的模组",
++  "nulltrace.section.clientBrand": "§c▌ §f§l客户端品牌",
++  "nulltrace.section.resourcePack": "§c▌ §f§l资源包保护",
++  "nulltrace.section.keyResolution": "§c▌ §f§l键解析保护",
++  "nulltrace.section.privacy": "§c▌ §f§l隐私与安全",
++  "nulltrace.section.alerts": "§c▌ §f§l提醒与日志",
++  "nulltrace.section.accounts": "§c▌ §f§l账户",
++  "nulltrace.section.savedAccounts": "§c▌ §f§l已保存的账户",
++  "nulltrace.section.addAccount": "§c▌ §f§l添加账户",
++  "nulltrace.section.modWhitelist": "§c▌ §f§l模组白名单",
++  "nulltrace.section.installedMods": "§c▌ §f§l已安装的模组",
+   "nulltrace.section.restartWarning": "§e⚠ 需要重启游戏才能生效",
+-  "nulltrace.section.debug": "§f§l调试",
++  "nulltrace.section.debug": "§c▌ §f§l调试",
+   "nulltrace.account.current": "§7当前: %s",
+   "nulltrace.whitelist.suffix.channels": " §7(%d 个通道)",
+   "nulltrace.option.spoofAsVanilla": "伪装为原版",
+diff --git a/src/main/resources/assets/nulltrace/nulltracelang/zh_tw.json b/src/main/resources/assets/nulltrace/nulltracelang/zh_tw.json
+index fba6c50..fbe35cb 100644
+--- a/src/main/resources/assets/nulltrace/nulltracelang/zh_tw.json
++++ b/src/main/resources/assets/nulltrace/nulltracelang/zh_tw.json
+@@ -4,18 +4,18 @@
+   "nulltrace.tab.accounts": "帳號",
+   "nulltrace.tab.whitelist": "白名單",
+   "nulltrace.tab.misc": "其他",
+-  "nulltrace.section.clientBrand": "§f§l用戶端品牌",
+-  "nulltrace.section.resourcePack": "§f§l資源包保護",
+-  "nulltrace.section.keyResolution": "§f§l鍵解析保護",
+-  "nulltrace.section.privacy": "§f§l隱私與安全",
+-  "nulltrace.section.alerts": "§f§l提醒與日誌",
+-  "nulltrace.section.accounts": "§f§l帳號",
+-  "nulltrace.section.savedAccounts": "§f§l已儲存的帳號",
+-  "nulltrace.section.addAccount": "§f§l新增帳號",
+-  "nulltrace.section.modWhitelist": "§f§l模組白名單",
+-  "nulltrace.section.installedMods": "§f§l已安裝的模組",
++  "nulltrace.section.clientBrand": "§c▌ §f§l用戶端品牌",
++  "nulltrace.section.resourcePack": "§c▌ §f§l資源包保護",
++  "nulltrace.section.keyResolution": "§c▌ §f§l鍵解析保護",
++  "nulltrace.section.privacy": "§c▌ §f§l隱私與安全",
++  "nulltrace.section.alerts": "§c▌ §f§l提醒與日誌",
++  "nulltrace.section.accounts": "§c▌ §f§l帳號",
++  "nulltrace.section.savedAccounts": "§c▌ §f§l已儲存的帳號",
++  "nulltrace.section.addAccount": "§c▌ §f§l新增帳號",
++  "nulltrace.section.modWhitelist": "§c▌ §f§l模組白名單",
++  "nulltrace.section.installedMods": "§c▌ §f§l已安裝的模組",
+   "nulltrace.section.restartWarning": "§e⚠ 需要重新啟動遊戲才能生效",
+-  "nulltrace.section.debug": "§f§l除錯",
++  "nulltrace.section.debug": "§c▌ §f§l除錯",
+   "nulltrace.account.current": "§7目前: %s",
+   "nulltrace.whitelist.suffix.channels": " §7(%d 個通道)",
+   "nulltrace.option.spoofAsVanilla": "偽裝為原版",
+diff --git a/stonecutter.gradle b/stonecutter.gradle
+index 2761417..ffa07ba 100644
+--- a/stonecutter.gradle
++++ b/stonecutter.gradle
+@@ -7,11 +7,11 @@ stonecutter.active '26.2' /* [SC] DO NOT EDIT */
+ tasks.register('buildAll') {
+     group = 'build'
+     description = 'Builds all supported Minecraft versions'
+-    dependsOn ':26.2:build', ':26.3:build'
++    dependsOn ':1.21.11:build', ':26.1:build', ':26.2:build', ':26.3:build'
+ }
+ 
+ tasks.register('remapAll') {
+     group = 'build'
+     description = 'Builds final artifacts for all supported Minecraft versions'
+-    dependsOn ':26.2:jar', ':26.3:jar'
++    dependsOn ':1.21.11:remapJar', ':26.1:jar', ':26.2:jar', ':26.3:jar'
+ }
+diff --git a/versions/1.21.11/gradle.properties b/versions/1.21.11/gradle.properties
+new file mode 100644
+index 0000000..f216507
+--- /dev/null
++++ b/versions/1.21.11/gradle.properties
+@@ -0,0 +1,13 @@
++# Minecraft 1.21.11
++# 1.21.11 renamed ResourceLocation to Identifier
++# 1.21.11 changed CycleButton.builder() API
++# Check versions at https://fabricmc.net/develop
++
++minecraft_version=1.21.11
++loader_version=0.19.3
++fabric_version=0.140.2+1.21.11
++modmenu_version=17.0.0
++
++# Version range this build supports
++minecraft_version_range=>=1.21.11 <26.1
++version_suffix=1.21.11
+diff --git a/versions/26.1/gradle.properties b/versions/26.1/gradle.properties
+new file mode 100644
+index 0000000..f9d35a9
+--- /dev/null
++++ b/versions/26.1/gradle.properties
+@@ -0,0 +1,13 @@
++# Minecraft 26.1 series (26.1, 26.1.1, 26.1.2)
++# First unobfuscated version line -- uses net.fabricmc.fabric-loom plugin (no remapping)
++# Requires Java 25, Gradle 9.4.0
++# Built against 26.1.2 (newest patch); declared range covers the whole 26.1.x series
++
++minecraft_version=26.1.2
++loader_version=0.19.3
++fabric_version=0.146.1+26.1.2
++modmenu_version=18.0.0-beta.1
++
++# Version range this build supports
++minecraft_version_range=>=26.1 <26.2
++version_suffix=26.1-26.1.2

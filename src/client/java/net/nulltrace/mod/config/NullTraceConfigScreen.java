@@ -194,8 +194,10 @@ public class NullTraceConfigScreen extends Screen {
         this.versionOutdated = UpdateChecker.getLatestVersion() != null
                 && !UpdateChecker.getLatestVersion().equals(UpdateChecker.getCurrentVersion());
         String color = versionOutdated ? "\u00A7c" : "\u00A7a";
-        Component versionText = Component.literal(color + currentVersion);
-        int textWidth = this.font.width(currentVersion);
+        // Brand the footer tag: dimmed mod name followed by the status-coloured version.
+        String versionPlain = "NullTrace " + currentVersion;
+        Component versionText = Component.literal("\u00A78NullTrace " + color + currentVersion);
+        int textWidth = this.font.width(versionPlain);
         int labelHeight = 10;
         int footerY = this.height - 36;
         int labelY = footerY + (36 - labelHeight) / 2;

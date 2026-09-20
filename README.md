@@ -210,12 +210,16 @@ When diagnostics are enabled, common alerts include:
 
 The current `main` branch is maintained for:
 
-| Minecraft | Java | Fabric Loader | Fabric API   |
-| --------- | ---- | ------------- | ------------ |
-| **26.2**  | 25   | 0.19.5        | 0.160.0+26.2 |
-| **26.3**  | 25   | 0.19.5        | 0.160.5+26.3 |
+| Minecraft    | Covers          | Java | Fabric Loader | Fabric API     |
+| ------------ | --------------- | ---- | ------------- | -------------- |
+| **1.21.11**  | 1.21.11         | 21   | 0.19.3        | 0.140.2+1.21.11 |
+| **26.1**     | 26.1 – 26.1.2   | 25   | 0.19.3        | 0.146.1+26.1.2 |
+| **26.2**     | 26.2            | 25   | 0.19.5        | 0.160.0+26.2   |
+| **26.3**     | 26.3            | 25   | 0.19.5        | 0.160.5+26.3   |
 
-Minecraft 26.1 and older targets are not part of the current `versions/` tree on `main`.
+The `26.1` target is built against 26.1.2 and declares `>=26.1 <26.2`, so a single JAR
+covers the whole 26.1 line. Targets older than 1.21.11 are not part of the current
+`versions/` tree on `main`.
 
 ### Mod Compatibility
 
@@ -236,7 +240,7 @@ NullTrace is currently **GitHub-only**.
 
 Go to the [GitHub Releases](https://github.com/International-Duck-Incorporated/NullTrace/releases) page and download the JAR matching your Minecraft version.
 
-The `main` branch currently produces automated pre-release/nightly builds for Minecraft 26.2 and 26.3.
+The `main` branch currently produces automated pre-release/nightly builds for Minecraft 1.21.11, 26.1, 26.2 and 26.3.
 
 ### Manual Installation
 
@@ -254,7 +258,8 @@ NullTrace uses [Fabric Loom](https://github.com/FabricMC/fabric-loom) and [Stone
 
 ### Requirements
 
-* Java 25 for the current 26.2 and 26.3 targets
+* Java 25 for the 26.1, 26.2 and 26.3 targets; Java 21 or newer for 1.21.11
+  (a Java 25 JDK can build every target, since 1.21.11 is compiled with `--release 21`)
 * Git
 * No system Gradle installation is required; the repository includes the Gradle wrapper
 
@@ -265,32 +270,36 @@ git clone https://github.com/International-Duck-Incorporated/NullTrace.git
 cd NullTrace
 ```
 
-### Build Minecraft 26.2
+### Build A Single Minecraft Version
+
+Replace `<version>` with `1.21.11`, `26.1`, `26.2` or `26.3`.
 
 Linux/macOS:
 
 ```bash
-./gradlew :26.2:build
+./gradlew :<version>:build
 ```
 
 Windows:
 
 ```powershell
-.\gradlew.bat :26.2:build
+.\gradlew.bat :<version>:build
 ```
 
-### Build Minecraft 26.3
+For example, `./gradlew :26.3:build`.
+
+### Build Every Version
 
 Linux/macOS:
 
 ```bash
-./gradlew :26.3:build
+./gradlew buildAll
 ```
 
 Windows:
 
 ```powershell
-.\gradlew.bat :26.3:build
+.\gradlew.bat buildAll
 ```
 
 Generated JARs are written below:
@@ -312,6 +321,8 @@ NullTrace/
 ├── src/main/                # Shared/common code
 ├── src/client/              # Client-only code and mixins
 ├── versions/
+│   ├── 1.21.11/
+│   ├── 26.1/
 │   ├── 26.2/
 │   └── 26.3/
 ├── build.gradle
