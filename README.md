@@ -15,17 +15,21 @@
 </p>
 
 > [!IMPORTANT]
-> Download NullTrace only from the official [Modrinth](https://modrinth.com/mod/nulltrace), [GitHub Releases](https://github.com/International-Duck-Incorporated/NullTrace/releases), or [CurseForge](https://www.curseforge.com/minecraft/mc-mods/nulltrace) pages.
+> NullTrace is currently distributed **exclusively through GitHub**.
 >
-> Fake download pages and Discord servers have been used to distribute modified or trojanized builds. A file from another source should be treated as unofficial.
+> Official downloads are available from the [GitHub Releases](https://github.com/International-Duck-Incorporated/NullTrace/releases) page and the repository itself.
+>
+> Any NullTrace JAR found elsewhere should be treated as unofficial.
 
-## Overview
+## About NullTrace
 
-Minecraft servers can learn more about a client than its username and IP address. Mods can expose network channels, known resource packs, translation keys, keybinds, client brands, resource-pack behavior, and other client-side state.
+NullTrace is a **fork of [OpSec](https://github.com/aurickk/OpSec)** by [aurickk](https://github.com/aurickk).
 
-NullTrace is a client-side privacy layer designed to reduce those fingerprinting surfaces.
+The project started from OpSec's client-side privacy and anti-fingerprinting work and has since been developed under the NullTrace name, with its own codebase, package structure, branding, version support, and additional protections.
 
-It does not make you anonymous. It does not hide your IP address or server-side activity, and it cannot prevent every possible form of fingerprinting. Its goal is to make common client-identification and tracking techniques harder to use.
+The purpose of NullTrace is to reduce the amount of client-side information that Minecraft servers can use to identify, fingerprint, or track a modded client.
+
+NullTrace does not make you anonymous. It does not hide your IP address, server-side activity, or every possible fingerprinting technique. It is specifically focused on reducing common client-side fingerprinting and tracking surfaces.
 
 ## Features
 
@@ -204,7 +208,7 @@ When diagnostics are enabled, common alerts include:
 
 ### Current Minecraft Targets
 
-The current branch is maintained for the following Minecraft versions:
+The current `main` branch is maintained for:
 
 | Minecraft | Java | Fabric Loader | Fabric API   |
 | --------- | ---- | ------------- | ------------ |
@@ -215,40 +219,34 @@ Minecraft 26.1 and older targets are not part of the current `versions/` tree on
 
 ### Mod Compatibility
 
-NullTrace currently declares a conflict with:
+NullTrace currently declares conflicts with:
 
 * [ExploitPreventer](https://github.com/NikOverflow/ExploitPreventer)
 * Ichor
 * LabyMod
 * AutismsexDefender
 
-Do not install ExploitPreventer alongside NullTrace unless the project's compatibility rules change.
+Check the repository metadata and release notes before combining NullTrace with other client modification frameworks.
 
 ## Installation
 
-### Modrinth
+NullTrace is currently **GitHub-only**.
 
-Download the build matching your Minecraft version from [Modrinth](https://modrinth.com/mod/nulltrace).
+### Download
 
-### GitHub
+Go to the [GitHub Releases](https://github.com/International-Duck-Incorporated/NullTrace/releases) page and download the JAR matching your Minecraft version.
 
-The [GitHub Releases](https://github.com/International-Duck-Incorporated/NullTrace/releases) page contains the generated JARs.
-
-The `main` branch currently publishes automated pre-release/nightly builds for Minecraft 26.2 and 26.3.
-
-### CurseForge
-
-[CurseForge](https://www.curseforge.com/minecraft/mc-mods/nulltrace) is also supported, but updates may lag behind the GitHub and Modrinth builds.
+The `main` branch currently produces automated pre-release/nightly builds for Minecraft 26.2 and 26.3.
 
 ### Manual Installation
 
 1. Install [Fabric Loader](https://fabricmc.net/use/) for your Minecraft version.
-2. Install the matching [Fabric API](https://modrinth.com/mod/fabric-api).
-3. Download the matching NullTrace JAR.
-4. Put the JARs in your `.minecraft/mods` directory.
+2. Install the matching [Fabric API](https://github.com/FabricMC/fabric-api).
+3. Download the matching NullTrace JAR from [GitHub Releases](https://github.com/International-Duck-Incorporated/NullTrace/releases).
+4. Put the JAR in your `.minecraft/mods` directory.
 5. Start Minecraft.
 
-Mod Menu is optional but provides a convenient configuration entry point.
+[Mod Menu](https://modrinth.com/mod/modmenu) is optional but provides a convenient configuration entry point.
 
 ## Building
 
@@ -301,8 +299,6 @@ Generated JARs are written below:
 versions/<minecraft-version>/build/libs/
 ```
 
-Sources are generated alongside the normal JAR during the Gradle build.
-
 ## Development
 
 NullTrace uses a shared source tree with version-specific Stonecutter projects under `versions/`.
@@ -337,9 +333,11 @@ Pull requests should:
 * Preserve the existing GPL-3.0-only licensing.
 * Include testing information for the Minecraft version(s) affected.
 
-## References and Credits
+## Credits
 
-NullTrace began as a fork of [OpSec](https://github.com/aurickk/OpSec) by aurickk.
+NullTrace is a fork of [OpSec](https://github.com/aurickk/OpSec) by [aurickk](https://github.com/aurickk).
+
+The project retains attribution to the original project while continuing development independently under the NullTrace name.
 
 Additional implementations and research are based on or informed by:
 
