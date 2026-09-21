@@ -251,7 +251,8 @@ NullTrace is currently **GitHub-only**.
 
 Go to the [GitHub Releases](https://github.com/International-Duck-Incorporated/NullTrace/releases) page and download the JAR matching your Minecraft version.
 
-The `main` branch currently produces automated pre-release/nightly builds for Minecraft 1.21.11, 26.1, 26.2 and 26.3.
+Stable releases are tagged `v<version>` and carry one JAR per Minecraft target. The `main`
+branch additionally produces automated pre-release/nightly builds for the same four targets.
 
 ### Manual Installation
 

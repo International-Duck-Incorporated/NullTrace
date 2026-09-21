@@ -24,7 +24,9 @@ import java.util.concurrent.CompletableFuture;
  */
 public final class JarIntegrityChecker {
 
-    private static final String RELEASES_BASE_URL = "https://api.github.com/repos/International-Duck-Incorporated/NullTrace/releases/tags/V";
+    private static final String RELEASES_BASE_URL = "https://api.github.com/repos/International-Duck-Incorporated/NullTrace/releases/tags/v";
+
+    private static final String ASSET_PREFIX = "nulltrace-";
 
     private static final HttpClient HTTP_CLIENT = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(10))
@@ -201,11 +203,18 @@ public final class JarIntegrityChecker {
         for (JsonElement element : assets) {
             JsonObject asset = element.getAsJsonObject();
             String name = asset.has("name") ? asset.get("name").getAsString() : "";
-            if (!name.startsWith("nulltrace-") || !name.endsWith(".jar")) continue;
+            if (!name.endsWith(".jar")) continue;
+
+            // Release assets are uploaded with a "NullTrace-" display prefix
+            // (see .github/workflows/release.yml), so match on the embedded
+            // "nulltrace-<range>+v<version>.jar" portion rather than the start
+            // of the string.
+            int prefix = name.indexOf(ASSET_PREFIX);
+            if (prefix < 0) continue;
 
             // Extract version range: between "nulltrace-" and "+v"
-            int rangeStart = 6; // "nulltrace-".length()
-            int rangeEnd = name.indexOf("+v");
+            int rangeStart = prefix + ASSET_PREFIX.length();
+            int rangeEnd = name.indexOf("+v", rangeStart);
             if (rangeEnd <= rangeStart) continue;
 
             String range = name.substring(rangeStart, rangeEnd);
@@ -235,11 +244,29 @@ public final class JarIntegrityChecker {
         String[] bParts = b.split("\\.");
         int len = Math.max(aParts.length, bParts.length);
         for (int i = 0; i < len; i++) {
-            int aNum = i < aParts.length ? Integer.parseInt(aParts[i]) : 0;
-            int bNum = i < bParts.length ? Integer.parseInt(bParts[i]) : 0;
+            int aNum = i < aParts.length ? parseSegment(aParts[i]) : 0;
+            int bNum = i < bParts.length ? parseSegment(bParts[i]) : 0;
             if (aNum != bNum) return Integer.compare(aNum, bNum);
         }
         return 0;
+    }
+
+    /**
+     * Parses a single dot-separated version segment, tolerating non-numeric
+     * values (snapshots, pre-releases) instead of throwing. A malformed segment
+     * must not abort the whole integrity check.
+     */
+    private static int parseSegment(String segment) {
+        int end = 0;
+        while (end < segment.length() && Character.isDigit(segment.charAt(end))) {
+            end++;
+        }
+        if (end == 0) return 0;
+        try {
+            return Integer.parseInt(segment.substring(0, end));
+        } catch (NumberFormatException e) {
+            return 0;
+        }
     }
 
     /**
