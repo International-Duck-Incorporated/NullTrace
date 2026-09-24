@@ -1,4 +1,4 @@
-﻿<p align="center">
+<p align="center">
   <img src="docs/assets/nulltrace-logo.png" alt="NullTrace" width="15%">
 </p>
 
@@ -9,8 +9,7 @@
 </p>
 
 <p align="center">
-  <a href="https://gitlab.com/international-duck-incorporated/NullTrace/releases"><img alt="GitLab Releases" src="https://img.shields.io/badge/GitLab-Releases-FC6D26?logo=gitlab&logoColor=white"></a>
-  <a href="https://gitlab.com/international-duck-incorporated/NullTrace/actions"><img alt="Build" src="https://img.shields.io/github/actions/workflow/status/International-Duck-Incorporated/NullTrace/release.yml?branch=main&label=build&logo=github"></a>
+  <a href="https://gitlab.com/international-duck-incorporated/NullTrace/-/releases"><img alt="GitLab Releases" src="https://img.shields.io/badge/GitLab-Releases-FC6D26?logo=gitlab&logoColor=white"></a>
   <a href="https://gitlab.com/international-duck-incorporated/NullTrace/blob/main/LICENSE"><img alt="License" src="https://img.shields.io/badge/License-GPL--3.0-blue.svg"></a>
 </p>
 
