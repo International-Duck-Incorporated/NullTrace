@@ -1,4 +1,4 @@
-<p align="center">
+﻿<p align="center">
   <img src="docs/assets/nulltrace-logo.png" alt="NullTrace" width="15%">
 </p>
 
@@ -9,15 +9,15 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/International-Duck-Incorporated/NullTrace/releases"><img alt="GitHub Releases" src="https://img.shields.io/github/v/release/International-Duck-Incorporated/NullTrace?display_name=tag&logo=github&logoColor=white"></a>
-  <a href="https://github.com/International-Duck-Incorporated/NullTrace/actions"><img alt="Build" src="https://img.shields.io/github/actions/workflow/status/International-Duck-Incorporated/NullTrace/release.yml?branch=main&label=build&logo=github"></a>
-  <a href="https://github.com/International-Duck-Incorporated/NullTrace/blob/main/LICENSE"><img alt="License" src="https://img.shields.io/badge/License-GPL--3.0-blue.svg"></a>
+  <a href="https://gitlab.com/international-duck-incorporated/NullTrace/releases"><img alt="GitLab Releases" src="https://img.shields.io/badge/GitLab-Releases-FC6D26?logo=gitlab&logoColor=white"></a>
+  <a href="https://gitlab.com/international-duck-incorporated/NullTrace/actions"><img alt="Build" src="https://img.shields.io/github/actions/workflow/status/International-Duck-Incorporated/NullTrace/release.yml?branch=main&label=build&logo=github"></a>
+  <a href="https://gitlab.com/international-duck-incorporated/NullTrace/blob/main/LICENSE"><img alt="License" src="https://img.shields.io/badge/License-GPL--3.0-blue.svg"></a>
 </p>
 
 > [!IMPORTANT]
-> NullTrace is currently distributed **exclusively through GitHub**.
+> NullTrace is currently distributed **through GitLab**.
 >
-> Official downloads are available from the [GitHub Releases](https://github.com/International-Duck-Incorporated/NullTrace/releases) page and the repository itself.
+> Official downloads are available from the [GitLab Releases](https://gitlab.com/international-duck-incorporated/NullTrace/releases) page and the repository itself.
 >
 > Any NullTrace JAR found elsewhere should be treated as unofficial.
 
@@ -249,7 +249,7 @@ NullTrace is currently **GitHub-only**.
 
 ### Download
 
-Go to the [GitHub Releases](https://github.com/International-Duck-Incorporated/NullTrace/releases) page and download the JAR matching your Minecraft version.
+Go to the [GitLab Releases](https://gitlab.com/international-duck-incorporated/NullTrace/releases) page and download the JAR matching your Minecraft version.
 
 The `main` branch currently produces automated pre-release/nightly builds for Minecraft 1.21.11, 26.1, 26.2 and 26.3.
 
@@ -257,7 +257,7 @@ The `main` branch currently produces automated pre-release/nightly builds for Mi
 
 1. Install [Fabric Loader](https://fabricmc.net/use/) for your Minecraft version.
 2. Install the matching [Fabric API](https://github.com/FabricMC/fabric-api).
-3. Download the matching NullTrace JAR from [GitHub Releases](https://github.com/International-Duck-Incorporated/NullTrace/releases).
+3. Download the matching NullTrace JAR from [GitLab Releases](https://gitlab.com/international-duck-incorporated/NullTrace/releases).
 4. Put the JAR in your `.minecraft/mods` directory.
 5. Start Minecraft.
 
@@ -277,7 +277,7 @@ NullTrace uses [Fabric Loom](https://github.com/FabricMC/fabric-loom) and [Stone
 ### Clone
 
 ```bash
-git clone https://github.com/International-Duck-Incorporated/NullTrace.git
+git clone https://gitlab.com/international-duck-incorporated/NullTrace.git
 cd NullTrace
 ```
 
@@ -347,7 +347,7 @@ When changing Minecraft-specific code, test the affected version target rather t
 
 ## Issues and Contributions
 
-Use the [issue tracker](https://github.com/International-Duck-Incorporated/NullTrace/issues) for bug reports, reproducible compatibility problems, and feature requests.
+Use the [issue tracker](https://gitlab.com/international-duck-incorporated/NullTrace/issues) for bug reports, reproducible compatibility problems, and feature requests.
 
 Pull requests should:
 
@@ -378,3 +378,4 @@ Additional implementations and research are based on or informed by:
 NullTrace is licensed under the [GNU General Public License v3.0](https://www.gnu.org/licenses/gpl-3.0.html).
 
 See [LICENSE](LICENSE) for the complete license text.
+
