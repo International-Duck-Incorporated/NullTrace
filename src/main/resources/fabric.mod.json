@@ -3,7 +3,7 @@
 	"id": "nulltrace",
 	"version": "${version}",
 	"name": "NullTrace",
-	"description": "Advanced client brand spoofing, tracking exploit protections, and other privacy focused features.",
+	"description": "A client-side Minecraft privacy and fingerprinting protection mod for Fabric.",
 	"authors": [
 		"Aurick"
 	],
