@@ -376,6 +376,12 @@ public class NullTraceConfigScreen extends Screen {
                     (button, value) -> { settings.setDisableTelemetry(value); config.save(); }));
         }
 
+        // Proxy support is opt-in and uses the proxy configured by Minecraft/the launcher.
+        widgets.add(cycleBuilder(COLORED_BOOL_TO_TEXT, List.of(Boolean.TRUE, Boolean.FALSE), settings.isUseProxy())
+                .withTooltip(v -> Tooltip.create(NullTraceLang.component(NullTraceStrings.OPTION_USE_PROXY_TOOLTIP)))
+                .create(0, 0, 230, 20, NullTraceLang.component(NullTraceStrings.OPTION_USE_PROXY),
+                (button, value) -> { settings.setUseProxy(value); config.save(); }));
+
         return new WidgetTab(NullTraceLang.component(NullTraceStrings.TAB_PROTECTION), widgets);
     }
     

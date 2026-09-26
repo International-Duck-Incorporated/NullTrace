@@ -178,6 +178,8 @@
   "nulltrace.option.fakeDefaultKeybinds.tooltip": "Spoof vanilla keybinds to default values when enabled",
   "nulltrace.option.meteorFix.tooltip": "Blacklist a Meteor Client mixin to allow NullTrace's proper protection handling",
   "nulltrace.option.disableTelemetry.tooltip": "Block telemetry data sent to Mojang",
+  "nulltrace.option.useProxy": "Play through proxy",
+  "nulltrace.option.useProxy.tooltip": "Use the proxy configured by Minecraft or the launcher for multiplayer and account connections. Requires a configured proxy.",
   "nulltrace.option.showAlerts.tooltip": "Show chat messages when tracking detected",
   "nulltrace.option.showToasts.tooltip": "Show popup notifications",
   "nulltrace.option.logDetections.tooltip": "Log detection events to game log",

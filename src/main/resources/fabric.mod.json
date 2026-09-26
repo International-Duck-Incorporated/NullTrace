@@ -3,14 +3,16 @@
 	"id": "nulltrace",
 	"version": "${version}",
 	"name": "NullTrace",
-	"description": "Advanced client brand spoofing, tracking exploit protections, and other privacy focused features.",
+	"description": "A client-side Fabric privacy mod covering client brand spoofing, fingerprint protection, tracking defenses, and safer server connections.",
 	"authors": [
-		"Aurick"
+		"International Duck Incorporated",
+		"espress0",
+		"0xFFshell"
 	],
 	"contact": {
-		"homepage": "https://modrinth.com/mod/nulltrace",
-		"sources": "https://github.com/International-Duck-Incorporated/NullTrace",
-		"issues": "https://github.com/International-Duck-Incorporated/NullTrace/issues"
+		"homepage": "https://international-duck-incorporated-github-io-427d19.gitlab.io/nulltrace",
+		"sources": "https://gitlab.com/international-duck-incorporated/NullTrace",
+		"issues": "https://gitlab.com/international-duck-incorporated/NullTrace/-/issues"
 	},
 	"license": "GPL-3.0-only",
 	"icon": "assets/nulltrace/icon.png",

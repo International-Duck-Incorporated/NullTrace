@@ -78,6 +78,8 @@ public final class NullTraceStrings {
 
     public static final String OPTION_CHAT_SIGNING = "nulltrace.option.chatSigning";
     public static final String OPTION_DISABLE_TELEMETRY = "nulltrace.option.disableTelemetry";
+    public static final String OPTION_USE_PROXY = "nulltrace.option.useProxy";
+    public static final String OPTION_USE_PROXY_TOOLTIP = "nulltrace.option.useProxy.tooltip";
 
     public static final String OPTION_SHOW_ALERTS = "nulltrace.option.showAlerts";
     public static final String OPTION_SHOW_TOASTS = "nulltrace.option.showToasts";

@@ -4,6 +4,8 @@ All notable changes to NullTrace are documented here.
 
 ## [Unreleased]
 
+## [2.0.1] - 2026-09-26
+
 ### Changed
 - Migrated the official project repository from GitHub to GitLab.
 - Updated NullTrace-owned documentation and repository links to GitLab.
