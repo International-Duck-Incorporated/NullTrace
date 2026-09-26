@@ -4,6 +4,18 @@ All notable changes to NullTrace are documented here.
 
 ## [Unreleased]
 
+## [2.0.2] - 2026-09-26
+
+### Added
+- Added explicit filtering for ViaVersion/ViaFabricPlus identity payloads.
+- Added resource-pack request identity-header scrubbing.
+- Added client-information normalization for common fingerprinting fields.
+- Added configurable blocking for server cookies and server transfers.
+
+### Fixed
+- Corrected repository metadata and documentation links after the GitLab migration.
+- Updated the project version metadata to 2.0.2.
+
 ## [2.0.1] - 2026-09-26
 
 ### Changed

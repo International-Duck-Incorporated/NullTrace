@@ -8,6 +8,8 @@
 		"ClientConnectionMixin",
 		"ClientPacketListenerMixin",
 		"ClientCommonPacketListenerImplMixin",
+		"PrivacyTransportMixin",
+		"ClientInformationMixin",
 		"ConnectScreenMixin",
 		"DownloadQueueMixin",
 		"DownloadedPackSourceMixin",

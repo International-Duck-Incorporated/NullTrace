@@ -106,6 +106,8 @@ public class SpoofSettings {
     // Uses the proxy configured by the Minecraft launcher/client. Disabled by default
     // so existing direct-connection behavior is preserved.
     private boolean useProxy = false;
+    private boolean blockServerCookies = true;
+    private boolean blockServerTransfers = true;
     
     // UI Settings
     private int buttonX = -1;
@@ -202,6 +204,12 @@ public class SpoofSettings {
 
     public boolean isUseProxy() { return useProxy; }
     public void setUseProxy(boolean useProxy) { this.useProxy = useProxy; }
+
+    public boolean isBlockServerCookies() { return blockServerCookies; }
+    public void setBlockServerCookies(boolean value) { this.blockServerCookies = value; }
+
+    public boolean isBlockServerTransfers() { return blockServerTransfers; }
+    public void setBlockServerTransfers(boolean value) { this.blockServerTransfers = value; }
     
     public int[] getButtonPosition() {
         if (buttonX < 0 || buttonY < 0) return null;
@@ -270,6 +278,8 @@ public class SpoofSettings {
         json.addProperty("signingMode", signingMode.name());
         json.addProperty("disableTelemetry", disableTelemetry);
         json.addProperty("useProxy", useProxy);
+        json.addProperty("blockServerCookies", blockServerCookies);
+        json.addProperty("blockServerTransfers", blockServerTransfers);
         json.addProperty("buttonX", buttonX);
         json.addProperty("buttonY", buttonY);
         json.addProperty("skippedUpdateVersion", skippedUpdateVersion);
@@ -352,6 +362,8 @@ public class SpoofSettings {
         }
         if (json.has("disableTelemetry")) s.disableTelemetry = json.get("disableTelemetry").getAsBoolean();
         if (json.has("useProxy")) s.useProxy = json.get("useProxy").getAsBoolean();
+        if (json.has("blockServerCookies")) s.blockServerCookies = json.get("blockServerCookies").getAsBoolean();
+        if (json.has("blockServerTransfers")) s.blockServerTransfers = json.get("blockServerTransfers").getAsBoolean();
         if (json.has("buttonX")) s.buttonX = json.get("buttonX").getAsInt();
         if (json.has("buttonY")) s.buttonY = json.get("buttonY").getAsInt();
         if (json.has("skippedUpdateVersion")) s.skippedUpdateVersion = json.get("skippedUpdateVersion").getAsString();
@@ -410,6 +422,8 @@ public class SpoofSettings {
         this.signingMode = other.signingMode;
         this.disableTelemetry = other.disableTelemetry;
         this.useProxy = other.useProxy;
+        this.blockServerCookies = other.blockServerCookies;
+        this.blockServerTransfers = other.blockServerTransfers;
         this.buttonX = other.buttonX;
         this.buttonY = other.buttonY;
         this.skippedUpdateVersion = other.skippedUpdateVersion;

@@ -66,6 +66,11 @@ public class HttpUtilMixin {
             @Local(argsOnly = true) Map<String, String> requestProperties,
             @Local LocalRef<HttpURLConnection> httpURLConnection) throws IOException {
 
+        // Resource-pack hosts/CDNs do not need the player's account identity.
+        // Remove the two directly identifying headers before the first request and
+        // from the mutable redirect-header map so they cannot be restored on hops.
+        nulltrace$scrubIdentityHeaders(instance, requestProperties);
+
         if (!NullTraceConfig.getInstance().shouldBlockLocalPackUrls()) return original.call(instance);
 
         if (!LocalAddressUtil.isLocalAddress(LocalAddressUtil.serverAddress)
@@ -153,6 +158,7 @@ public class HttpUtilMixin {
 
             instance.setInstanceFollowRedirects(false);
             requestProperties.forEach(instance::setRequestProperty);
+            nulltrace$scrubIdentityHeaders(instance, requestProperties);
 
             status = instance.getResponseCode();
             redirects++;
@@ -160,6 +166,19 @@ public class HttpUtilMixin {
 
         httpURLConnection.set(instance);
         return original.call(instance);
+    }
+
+    private static void nulltrace$scrubIdentityHeaders(
+            HttpURLConnection connection, Map<String, String> requestProperties) {
+        requestProperties.remove("X-Minecraft-Username");
+        requestProperties.remove("X-Minecraft-UUID");
+        requestProperties.remove("x-minecraft-username");
+        requestProperties.remove("x-minecraft-uuid");
+        // HttpURLConnection may already have copied the map into its request
+        // properties; replacing with an empty value is safer than leaving the
+        // original value attached on redirect-created connections.
+        connection.setRequestProperty("X-Minecraft-Username", "");
+        connection.setRequestProperty("X-Minecraft-UUID", "");
     }
 }
 //?} else {

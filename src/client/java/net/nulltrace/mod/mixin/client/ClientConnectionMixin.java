@@ -150,6 +150,19 @@ public class ClientConnectionMixin {
                 return;
             }
 
+            // ViaFabricPlus/ViaVersion explicitly identifies the client through
+            // vv:mod_details. Do not let AUTO whitelist mode re-enable this
+            // identity payload. The selected translated protocol can still be
+            // observable by a server, but the direct Via identity leak is avoidable.
+            if ("vv".equals(payloadId.getNamespace())
+                    && ("mod_details".equals(payloadId.getPath())
+                    || "app_details".equals(payloadId.getPath())
+                    || "proxy_details".equals(payloadId.getPath()))) {
+                NullTrace.LOGGER.debug("[NullTrace] Blocking Via identity payload: {}", payloadId);
+                promise.setSuccess();
+                return;
+            }
+
             if (config.getSettings().isVanillaMode()) {
                 NullTrace.LOGGER.debug("[NullTrace] VANILLA MODE (pipeline) - Blocking: {}", payloadId);
                 promise.setSuccess();

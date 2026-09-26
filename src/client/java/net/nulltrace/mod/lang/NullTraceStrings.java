@@ -80,6 +80,10 @@ public final class NullTraceStrings {
     public static final String OPTION_DISABLE_TELEMETRY = "nulltrace.option.disableTelemetry";
     public static final String OPTION_USE_PROXY = "nulltrace.option.useProxy";
     public static final String OPTION_USE_PROXY_TOOLTIP = "nulltrace.option.useProxy.tooltip";
+    public static final String OPTION_BLOCK_SERVER_COOKIES = "nulltrace.option.blockServerCookies";
+    public static final String OPTION_BLOCK_SERVER_COOKIES_TOOLTIP = "nulltrace.option.blockServerCookies.tooltip";
+    public static final String OPTION_BLOCK_SERVER_TRANSFERS = "nulltrace.option.blockServerTransfers";
+    public static final String OPTION_BLOCK_SERVER_TRANSFERS_TOOLTIP = "nulltrace.option.blockServerTransfers.tooltip";
 
     public static final String OPTION_SHOW_ALERTS = "nulltrace.option.showAlerts";
     public static final String OPTION_SHOW_TOASTS = "nulltrace.option.showToasts";

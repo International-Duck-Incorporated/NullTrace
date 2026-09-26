@@ -382,6 +382,16 @@ public class NullTraceConfigScreen extends Screen {
                 .create(0, 0, 230, 20, NullTraceLang.component(NullTraceStrings.OPTION_USE_PROXY),
                 (button, value) -> { settings.setUseProxy(value); config.save(); }));
 
+        widgets.add(cycleBuilder(COLORED_BOOL_TO_TEXT, List.of(Boolean.TRUE, Boolean.FALSE), settings.isBlockServerCookies())
+                .withTooltip(v -> Tooltip.create(NullTraceLang.component(NullTraceStrings.OPTION_BLOCK_SERVER_COOKIES_TOOLTIP)))
+                .create(0, 0, 230, 20, NullTraceLang.component(NullTraceStrings.OPTION_BLOCK_SERVER_COOKIES),
+                (button, value) -> { settings.setBlockServerCookies(value); config.save(); }));
+
+        widgets.add(cycleBuilder(COLORED_BOOL_TO_TEXT, List.of(Boolean.TRUE, Boolean.FALSE), settings.isBlockServerTransfers())
+                .withTooltip(v -> Tooltip.create(NullTraceLang.component(NullTraceStrings.OPTION_BLOCK_SERVER_TRANSFERS_TOOLTIP)))
+                .create(0, 0, 230, 20, NullTraceLang.component(NullTraceStrings.OPTION_BLOCK_SERVER_TRANSFERS),
+                (button, value) -> { settings.setBlockServerTransfers(value); config.save(); }));
+
         return new WidgetTab(NullTraceLang.component(NullTraceStrings.TAB_PROTECTION), widgets);
     }
     
