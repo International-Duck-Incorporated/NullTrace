@@ -13,11 +13,8 @@ variables:
   GIT_DEPTH: "0"
 
 cache:
-  key:
-    files:
-      - gradle/wrapper/gradle-wrapper.properties
-      - gradle.properties
-      - versions/*/gradle.properties
+  # Keep the cache key simple: GitLab limits cache:key:files to two files.
+  key: "gradle-${CI_COMMIT_REF_SLUG}"
   paths:
     - .gradle/caches/
     - .gradle/wrapper/
