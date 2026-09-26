@@ -26,13 +26,23 @@ public abstract class ClientInformationMixin {
 
     @Inject(method = "<init>(Lnet/minecraft/server/level/ClientInformation;)V", at = @At("TAIL"))
     private void nulltrace$normalizeClientInformation(ClientInformation original, CallbackInfo ci) {
+        // ClientInformation's record component names changed with the
+        // unobfuscated 26.x line; Stonecutter selects the correct mappings.
+        //? if >=26.1 {
+        int modelParts = original.modelCustomisation();
+        net.minecraft.world.entity.HumanoidArm mainArm = original.mainHand();
+        //?} else {
+        /*int modelParts = original.playerModelParts();
+        net.minecraft.world.entity.HumanoidArm mainArm = original.mainArm();
+        *///?}
+
         this.information = new ClientInformation(
                 "en_us",
                 8,
                 ChatVisiblity.FULL,
                 true,
-                original.playerModelParts(),
-                original.mainArm(),
+                modelParts,
+                mainArm,
                 false,
                 false,
                 ParticleStatus.ALL
