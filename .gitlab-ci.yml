@@ -30,7 +30,6 @@ build:
       - MC_VERSION: "26.3"
   script:
     - chmod +x ./gradlew
-    - ./gradlew --no-daemon "Set active project to $MC_VERSION"
     - ./gradlew --no-daemon ":$MC_VERSION:build" --stacktrace
     - mkdir -p release
     - find "versions/$MC_VERSION/build/libs" -maxdepth 1 -type f -name '*.jar' ! -name '*-sources.jar' ! -name '*-dev.jar' -exec cp {} release/ \;
