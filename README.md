@@ -244,7 +244,7 @@ Check the repository metadata and release notes before combining NullTrace with 
 
 ## Installation
 
-NullTrace is currently **GitHub-only**.
+NullTrace is maintained and released on **GitLab**.
 
 ### Download
 
