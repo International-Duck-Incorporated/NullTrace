@@ -137,7 +137,7 @@ Open the **NullTrace** button in the multiplayer screen or open the configuratio
 
 <img alt="NullTrace configuration screen" src="docs/assets/screenshots/config-protection.png" width="100%">
 
-Changes made while connected to a server may require reconnecting before every protection is active.
+Changes made while connected to a server may require reconnecting before every protection is active. Use `/nulltrace audit` to inspect blocked surfaces, allowed surfaces, reasons, and remaining exposure. `/nulltrace profile` shows the current server profile; `/nulltrace profile STRICT` or `/nulltrace profile MAXIMUM_PRIVACY` strengthens protections for that server.
 
 ### Protection
 
@@ -154,6 +154,8 @@ Changes made while connected to a server may require reconnecting before every p
 | **Meteor Fix**                     | Disable Meteor's conflicting key-resolution mixin when Meteor is installed |
 | **Signing Mode**                   | Configure chat signing                                                     |
 | **Disable Telemetry**              | Block Mojang telemetry                                                     |
+| **Normalize Client Information**    | Choose which language, view-distance, chat, and particle values are normalized |
+| **Server Privacy Profile**          | Use STANDARD, STRICT, MAXIMUM_PRIVACY, or CUSTOM per server               |
 
 ### Whitelist
 
@@ -187,24 +189,24 @@ The three whitelist modes:
 
 ### Accounts
 
-The built-in account manager supports session-based login, account switching, token validation, import/export, and optional offline accounts.
+The built-in account manager supports session-based login, account switching, token validation, import/export, and optional offline accounts. Session and refresh tokens are encrypted at rest with AES-GCM in a separate local vault; account exports intentionally omit bearer tokens and require re-authentication on the destination installation.
 
 Treat Minecraft session tokens as credentials. Never paste them into issues, screenshots, Discord messages, or other public locations.
 
 <img alt="NullTrace account manager" src="docs/assets/screenshots/config-accounts.png" width="100%">
 
-## Debug Command
+## Commands
 
-The `/nulltrace` command is disabled by default.
+`/nulltrace audit` and `/nulltrace profile` are always available so privacy remains inspectable. The detailed registry commands remain behind **Miscellaneous -> Debug Command**.
 
-Enable **Miscellaneous -> Debug Command** first.
-
-| Command                 | Description                                                          |
-| ----------------------- | -------------------------------------------------------------------- |
-| `/nulltrace`            | Show available commands                                              |
-| `/nulltrace info`       | Show tracked mod information                                         |
-| `/nulltrace info <mod>` | Inspect channels, keys, known packs, shaders, and other tracked data |
-| `/nulltrace channels`   | List tracked network channels and whitelist status                   |
+| Command                              | Description                                                          |
+| ------------------------------------ | -------------------------------------------------------------------- |
+| `/nulltrace audit`                   | Show blocked/allowed surfaces, reasons, and remaining exposure       |
+| `/nulltrace profile`                 | Show the current server profile                                      |
+| `/nulltrace profile STRICT`          | Strengthen protections for the current server                        |
+| `/nulltrace info`                    | Show tracked mod information                                         |
+| `/nulltrace info <mod>`              | Inspect channels, keys, known packs, shaders, and other tracked data |
+| `/nulltrace channels`                | List tracked network channels and whitelist status                   |
 
 ## Detections
 
@@ -250,7 +252,7 @@ NullTrace is maintained and released on **GitLab**.
 
 Go to the [GitLab Releases](https://gitlab.com/international-duck-incorporated/NullTrace/releases) page and download the JAR matching your Minecraft version.
 
-The `main` branch currently produces automated pre-release/nightly builds for Minecraft 1.21.11, 26.1, 26.2 and 26.3.
+The `main` branch currently produces GitLab CI artifacts for Minecraft 1.21.11, 26.1, 26.2 and 26.3. Version tags publish release assets and SHA-256 checksum files.
 
 ### Manual Installation
 
@@ -326,7 +328,7 @@ The current repository layout is broadly:
 
 ```text
 NullTrace/
-├── .github/workflows/       # CI and release automation
+├── .gitlab-ci.yml           # GitLab build, test, security, and release pipeline
 ├── docs/assets/             # Project artwork
 │   └── screenshots/         # In-game UI screenshots used by this README
 ├── src/main/                # Shared/common code

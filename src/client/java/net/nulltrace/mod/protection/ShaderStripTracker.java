@@ -5,6 +5,9 @@ import net.nulltrace.mod.config.NullTraceConstants;
 import net.nulltrace.mod.lang.NullTraceLang;
 import net.nulltrace.mod.lang.NullTraceStrings;
 import net.minecraft.client.Minecraft;
+import net.nulltrace.mod.privacy.PrivacyAction;
+import net.nulltrace.mod.privacy.PrivacyAudit;
+import net.nulltrace.mod.privacy.PrivacySurface;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -29,6 +32,8 @@ public final class ShaderStripTracker {
     private static final int MAX_TRACKED = 64; // cap per namespace vs. a pathological pack
 
     public static void onStripped(String namespace, String path) {
+        PrivacyAudit.record(PrivacySurface.SHADER_OVERRIDE, namespace + ":" + path,
+                PrivacyAction.BLOCK, "Server-pack shader override stripped");
         if (announced.contains(namespace)) return;
         Set<String> paths = pending.computeIfAbsent(namespace, k -> ConcurrentHashMap.newKeySet());
         if (paths.size() < MAX_TRACKED) paths.add(path);

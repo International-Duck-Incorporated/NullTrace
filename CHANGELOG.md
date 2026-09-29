@@ -1,8 +1,24 @@
-﻿# Changelog
+# Changelog
 
 All notable changes to NullTrace are documented here.
 
 ## [Unreleased]
+
+### Added
+- Added the central `ConnectionContext` / `PrivacyPolicy` / `AuditLedger` model with explainable `ALLOW`, `BLOCK`, `WARN`, and `LOG` decisions.
+- Added `/nulltrace audit` and per-server `STANDARD`, `STRICT`, `MAXIMUM_PRIVACY`, and `CUSTOM` profiles.
+- Added a pre-connection privacy warning with Cancel and Connect Anyway actions.
+- Added configurable client-information normalization for language, view distance, chat visibility, and particles.
+- Added an adversarial probe fixture and policy regression tests.
+- Added CI dependency reporting, JAR inspection, SHA-256 checksum generation, and checksum release assets.
+
+### Security
+- Removed the redirect-limit raw `Socket` side effect; rejected redirect hops are now checked and never opened.
+- Added AES-GCM encrypted-at-rest storage for session and refresh tokens; exports are redacted and require re-authentication.
+- Routed account HTTP requests through the same explicit Minecraft proxy setting as gameplay.
+
+### Changed
+- Updated the roadmap, README, and release pipeline to describe the GitLab repository and all four supported targets.
 
 ## [2.0.2] - 2026-09-26
 

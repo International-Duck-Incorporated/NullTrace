@@ -9,6 +9,9 @@ import net.nulltrace.mod.protection.NullTraceFromPacketAccess;
 import net.nulltrace.mod.protection.TranslationProtectionHandler;
 import net.nulltrace.mod.protection.TranslationProtectionHandler.InterceptionType;
 import net.nulltrace.mod.tracking.ModRegistry;
+import net.nulltrace.mod.privacy.PrivacyAction;
+import net.nulltrace.mod.privacy.PrivacyAudit;
+import net.nulltrace.mod.privacy.PrivacySurface;
 import net.minecraft.client.Minecraft;
 import net.minecraft.locale.Language;
 import net.minecraft.network.chat.contents.TranslatableContents;
@@ -123,6 +126,8 @@ public abstract class TranslatableContentsMixin implements NullTraceFromPacketAc
 
         // If protection is disabled, still log but allow resolution
         if (!config.isTranslationProtectionEnabled()) {
+            PrivacyAudit.record(PrivacySurface.TRANSLATION_PROBE, translationKey,
+                    PrivacyAction.ALLOW, "Translation protection is disabled");
             String realValue = nulltrace$getRealTranslation(translationKey, defaultValue);
             TranslationProtectionHandler.sendDetailDebug(InterceptionType.TRANSLATION, translationKey, realValue, realValue);
             TranslationProtectionHandler.logDetection(InterceptionType.TRANSLATION, translationKey, realValue, realValue);
@@ -163,6 +168,8 @@ public abstract class TranslatableContentsMixin implements NullTraceFromPacketAc
      */
     @Unique
     private void nulltrace$logBlocked(String translationKey, String defaultValue) {
+        PrivacyAudit.record(PrivacySurface.TRANSLATION_PROBE, translationKey,
+                PrivacyAction.BLOCK, "Non-vanilla translation lookup normalized");
         if (nulltrace$silent || nulltrace$reported) return;
         nulltrace$reported = true;
         String originalValue = nulltrace$getRealTranslation(translationKey, defaultValue);

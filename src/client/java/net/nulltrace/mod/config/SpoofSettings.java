@@ -61,6 +61,25 @@ public class SpoofSettings {
         /** No consent screen. Pack is always stripped; user may still toggle it on. */
         ALWAYS_ON
     }
+
+    /** How the client-information packet's language field is normalized. */
+    public enum NormalizedLanguage {
+        DEFAULT,
+        EN_US,
+        RANDOM
+    }
+
+    /** How the client-information packet's view distance is normalized. */
+    public enum NormalizedViewDistance {
+        DEFAULT,
+        FIXED_8
+    }
+
+    /** How chat visibility is represented in the normalized packet. */
+    public enum NormalizedChatVisibility {
+        DEFAULT,
+        FULL
+    }
     
     // Brand spoofing — when true, the client advertises a vanilla brand and blocks
     // ALL outbound custom payloads. When false, the natural Fabric brand passes
@@ -101,6 +120,14 @@ public class SpoofSettings {
     
     // Privacy
     private boolean disableTelemetry = true;
+
+    // Client-information normalization. Defaults preserve the existing privacy
+    // behavior, but every normalized field can now be turned off independently.
+    private boolean normalizeClientInformation = true;
+    private NormalizedLanguage normalizedLanguage = NormalizedLanguage.EN_US;
+    private NormalizedViewDistance normalizedViewDistance = NormalizedViewDistance.FIXED_8;
+    private NormalizedChatVisibility normalizedChatVisibility = NormalizedChatVisibility.FULL;
+    private boolean normalizeParticles = true;
 
     // Network
     // Uses the proxy configured by the Minecraft launcher/client. Disabled by default
@@ -202,6 +229,23 @@ public class SpoofSettings {
     public boolean isDisableTelemetry() { return disableTelemetry; }
     public void setDisableTelemetry(boolean disableTelemetry) { this.disableTelemetry = disableTelemetry; }
 
+    public boolean isNormalizeClientInformation() { return normalizeClientInformation; }
+    public void setNormalizeClientInformation(boolean value) { this.normalizeClientInformation = value; }
+    public NormalizedLanguage getNormalizedLanguage() { return normalizedLanguage; }
+    public void setNormalizedLanguage(NormalizedLanguage value) {
+        this.normalizedLanguage = value == null ? NormalizedLanguage.EN_US : value;
+    }
+    public NormalizedViewDistance getNormalizedViewDistance() { return normalizedViewDistance; }
+    public void setNormalizedViewDistance(NormalizedViewDistance value) {
+        this.normalizedViewDistance = value == null ? NormalizedViewDistance.FIXED_8 : value;
+    }
+    public NormalizedChatVisibility getNormalizedChatVisibility() { return normalizedChatVisibility; }
+    public void setNormalizedChatVisibility(NormalizedChatVisibility value) {
+        this.normalizedChatVisibility = value == null ? NormalizedChatVisibility.FULL : value;
+    }
+    public boolean isNormalizeParticles() { return normalizeParticles; }
+    public void setNormalizeParticles(boolean value) { this.normalizeParticles = value; }
+
     public boolean isUseProxy() { return useProxy; }
     public void setUseProxy(boolean useProxy) { this.useProxy = useProxy; }
 
@@ -277,6 +321,11 @@ public class SpoofSettings {
         json.addProperty("debugCommand", debugCommand);
         json.addProperty("signingMode", signingMode.name());
         json.addProperty("disableTelemetry", disableTelemetry);
+        json.addProperty("normalizeClientInformation", normalizeClientInformation);
+        json.addProperty("normalizedLanguage", normalizedLanguage.name());
+        json.addProperty("normalizedViewDistance", normalizedViewDistance.name());
+        json.addProperty("normalizedChatVisibility", normalizedChatVisibility.name());
+        json.addProperty("normalizeParticles", normalizeParticles);
         json.addProperty("useProxy", useProxy);
         json.addProperty("blockServerCookies", blockServerCookies);
         json.addProperty("blockServerTransfers", blockServerTransfers);
@@ -361,6 +410,20 @@ public class SpoofSettings {
             }
         }
         if (json.has("disableTelemetry")) s.disableTelemetry = json.get("disableTelemetry").getAsBoolean();
+        if (json.has("normalizeClientInformation")) s.normalizeClientInformation = json.get("normalizeClientInformation").getAsBoolean();
+        if (json.has("normalizedLanguage")) {
+            try { s.normalizedLanguage = NormalizedLanguage.valueOf(json.get("normalizedLanguage").getAsString()); }
+            catch (IllegalArgumentException ignored) { s.normalizedLanguage = NormalizedLanguage.EN_US; }
+        }
+        if (json.has("normalizedViewDistance")) {
+            try { s.normalizedViewDistance = NormalizedViewDistance.valueOf(json.get("normalizedViewDistance").getAsString()); }
+            catch (IllegalArgumentException ignored) { s.normalizedViewDistance = NormalizedViewDistance.FIXED_8; }
+        }
+        if (json.has("normalizedChatVisibility")) {
+            try { s.normalizedChatVisibility = NormalizedChatVisibility.valueOf(json.get("normalizedChatVisibility").getAsString()); }
+            catch (IllegalArgumentException ignored) { s.normalizedChatVisibility = NormalizedChatVisibility.FULL; }
+        }
+        if (json.has("normalizeParticles")) s.normalizeParticles = json.get("normalizeParticles").getAsBoolean();
         if (json.has("useProxy")) s.useProxy = json.get("useProxy").getAsBoolean();
         if (json.has("blockServerCookies")) s.blockServerCookies = json.get("blockServerCookies").getAsBoolean();
         if (json.has("blockServerTransfers")) s.blockServerTransfers = json.get("blockServerTransfers").getAsBoolean();
@@ -421,6 +484,11 @@ public class SpoofSettings {
         this.debugCommand = other.debugCommand;
         this.signingMode = other.signingMode;
         this.disableTelemetry = other.disableTelemetry;
+        this.normalizeClientInformation = other.normalizeClientInformation;
+        this.normalizedLanguage = other.normalizedLanguage;
+        this.normalizedViewDistance = other.normalizedViewDistance;
+        this.normalizedChatVisibility = other.normalizedChatVisibility;
+        this.normalizeParticles = other.normalizeParticles;
         this.useProxy = other.useProxy;
         this.blockServerCookies = other.blockServerCookies;
         this.blockServerTransfers = other.blockServerTransfers;

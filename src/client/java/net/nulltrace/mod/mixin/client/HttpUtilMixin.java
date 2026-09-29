@@ -21,8 +21,10 @@ import java.net.InetSocketAddress;
 import java.net.MalformedURLException;
 import java.net.ProtocolException;
 import java.net.Proxy;
-import java.net.Socket;
 import java.net.URL;
+import net.nulltrace.mod.privacy.PrivacyAction;
+import net.nulltrace.mod.privacy.PrivacyAudit;
+import net.nulltrace.mod.privacy.PrivacySurface;
 import java.util.Map;
 
 /**
@@ -76,6 +78,8 @@ public class HttpUtilMixin {
         if (!LocalAddressUtil.isLocalAddress(LocalAddressUtil.serverAddress)
                 && LocalAddressUtil.isLocalAddress(instance.getURL().getHost())) {
             NullTrace.LOGGER.warn("[NullTrace] Blocked connection to local address: {}", instance.getURL());
+            PrivacyAudit.record(PrivacySurface.LOCAL_REQUEST, instance.getURL().toString(),
+                    PrivacyAction.BLOCK, "Resource-pack URL resolves to a local or private address");
             PrivacyLogger.alertLocalPortScanDetected(instance.getURL().toString(), true);
             throw new IllegalStateException("Tried to connect to local address!");
         }
@@ -94,18 +98,30 @@ public class HttpUtilMixin {
         while (instance.getHeaderField("Location") != null
                 && (status == 300 || status == 301 || status == 302 || status == 303 || status == 305 || status == 307)) {
             if (redirects >= maxRedirects - 1) {
-                // Mirror vanilla JDK's setProxiedClient leak so cap-boundary TCP-count fingerprinting fails.
+                // Never reproduce vanilla's raw Socket side effect here. The old
+                // compatibility probe connected to the final Location before
+                // throwing, which bypassed the local/private-address guard and
+                // turned a redirect-limit check into an SSRF primitive.
                 try {
-                    URL leakUrl;
+                    URL limitUrl;
                     try {
-                        leakUrl = new URL(instance.getHeaderField("Location"));
+                        limitUrl = new URL(instance.getHeaderField("Location"));
                     } catch (MalformedURLException exception) {
-                        leakUrl = new URL(instance.getURL(), instance.getHeaderField("Location"));
+                        limitUrl = new URL(instance.getURL(), instance.getHeaderField("Location"));
                     }
-                    int leakPort = leakUrl.getPort() == -1 ? leakUrl.getDefaultPort() : leakUrl.getPort();
-                    //noinspection resource
-                    new Socket(leakUrl.getHost(), leakPort);
-                } catch (Exception ignored) {}
+                    if (!LocalAddressUtil.isLocalAddress(LocalAddressUtil.serverAddress)
+                            && LocalAddressUtil.isLocalAddress(limitUrl.getHost())) {
+                        PrivacyAudit.record(PrivacySurface.LOCAL_REQUEST, limitUrl.toString(),
+                                PrivacyAction.BLOCK, "Redirect limit target is local or private");
+                        PrivacyLogger.alertLocalPortScanDetected(limitUrl.toString(), true);
+                    } else {
+                        PrivacyAudit.record(PrivacySurface.RESOURCE_PACK, limitUrl.toString(),
+                                PrivacyAction.BLOCK, "Redirect limit reached before opening the next hop");
+                    }
+                } catch (Exception ignored) {
+                    PrivacyAudit.record(PrivacySurface.RESOURCE_PACK, "redirect-limit",
+                            PrivacyAction.BLOCK, "Redirect limit reached before opening the next hop");
+                }
                 throw new ProtocolException("Server redirected too many times (" + maxRedirects + ")");
             }
 
@@ -126,6 +142,8 @@ public class HttpUtilMixin {
                 if (!LocalAddressUtil.isLocalAddress(LocalAddressUtil.serverAddress)
                         && LocalAddressUtil.isLocalAddress(proxyUrl.getHost())) {
                     NullTrace.LOGGER.warn("[NullTrace] Blocked connection to local address: {}", proxyUrl);
+                    PrivacyAudit.record(PrivacySurface.LOCAL_REQUEST, proxyUrl.toString(),
+                            PrivacyAction.BLOCK, "HTTP proxy redirect resolves to a local or private address");
                     PrivacyLogger.alertLocalPortScanDetected(proxyUrl.toString(), true);
                     throw new IllegalStateException("Tried to connect to local address!");
                 }
@@ -151,6 +169,8 @@ public class HttpUtilMixin {
                 if (!LocalAddressUtil.isLocalAddress(LocalAddressUtil.serverAddress)
                         && LocalAddressUtil.isLocalAddress(instance.getURL().getHost())) {
                     NullTrace.LOGGER.warn("[NullTrace] Blocked connection to local address: {}", instance.getURL());
+                    PrivacyAudit.record(PrivacySurface.LOCAL_REQUEST, instance.getURL().toString(),
+                            PrivacyAction.BLOCK, "Redirect resolves to a local or private address");
                     PrivacyLogger.alertLocalPortScanDetected(instance.getURL().toString(), true);
                     throw new IllegalStateException("Tried to connect to local address!");
                 }

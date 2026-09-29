@@ -49,6 +49,7 @@ public class SessionAccount implements Account {
     private long lastValidated;
     private boolean valid = true; // Assume valid until proven otherwise
     private String lastError = null; // Last error message for display in UI
+    private boolean legacyPlaintextTokens = false;
 
     // Common Azure client IDs for Minecraft authentication
     // The refresh token must be used with the same client ID that issued it
@@ -59,9 +60,25 @@ public class SessionAccount implements Account {
             NullTraceConstants.AzureClientIds.LAUNCHER_CLIENT
     };
 
-    private static final HttpClient HTTP_CLIENT = HttpClient.newBuilder()
-            .connectTimeout(Duration.ofSeconds(NullTraceConstants.Retry.HTTP_TIMEOUT_SECONDS))
-            .build();
+    /** Builds the account HTTP client from the same explicit Minecraft proxy setting used by gameplay. */
+    private static HttpClient httpClient() {
+        HttpClient.Builder builder = HttpClient.newBuilder()
+                .connectTimeout(Duration.ofSeconds(NullTraceConstants.Retry.HTTP_TIMEOUT_SECONDS))
+                .followRedirects(HttpClient.Redirect.NEVER);
+        java.net.Proxy proxy = Minecraft.getInstance().getProxy();
+        if (proxy != null && proxy != java.net.Proxy.NO_PROXY
+                && proxy.address() instanceof java.net.InetSocketAddress) {
+            builder.proxy(new java.net.ProxySelector() {
+                @Override public java.util.List<java.net.Proxy> select(URI uri) {
+                    return java.util.List.of(proxy);
+                }
+                @Override public void connectFailed(URI uri, java.net.SocketAddress address, java.io.IOException error) {
+                    NullTrace.LOGGER.debug("[NullTrace] Account proxy connection failed for {}: {}", uri, error.getMessage());
+                }
+            });
+        }
+        return builder.build();
+    }
     
     public SessionAccount(String accessToken) {
         this.accessToken = accessToken;
@@ -191,7 +208,7 @@ public class SessionAccount implements Account {
                     .GET()
                     .build();
             
-            HttpResponse<String> response = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
+            HttpResponse<String> response = httpClient().send(request, HttpResponse.BodyHandlers.ofString());
             
             int statusCode = response.statusCode();
             long retryAfterMs = extractRetryAfter(response);
@@ -415,6 +432,7 @@ public class SessionAccount implements Account {
     @Override public boolean isValid() { return valid; }
     @Override public String getLastError() { return lastError; }
     public boolean hasRefreshToken() { return refreshToken != null && !refreshToken.isBlank(); }
+    public boolean hadLegacyPlaintextTokens() { return legacyPlaintextTokens; }
 
     @Override
     public boolean hasValidInfo() {
@@ -639,7 +657,7 @@ public class SessionAccount implements Account {
                     .timeout(Duration.ofSeconds(NullTraceConstants.Retry.HTTP_TIMEOUT_SECONDS))
                     .build();
             
-            HttpResponse<String> response = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
+            HttpResponse<String> response = httpClient().send(request, HttpResponse.BodyHandlers.ofString());
             
             long retryAfterMs = extractRetryAfter(response);
             boolean wasRateLimited = response.statusCode() == 429;
@@ -712,7 +730,7 @@ public class SessionAccount implements Account {
                     .timeout(Duration.ofSeconds(NullTraceConstants.Retry.AUTH_TIMEOUT_SECONDS))
                     .build();
             
-            HttpResponse<String> response = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
+            HttpResponse<String> response = httpClient().send(request, HttpResponse.BodyHandlers.ofString());
             
             long retryAfterMs = extractRetryAfter(response);
             boolean wasRateLimited = response.statusCode() == 429;
@@ -754,7 +772,7 @@ public class SessionAccount implements Account {
                     .timeout(Duration.ofSeconds(NullTraceConstants.Retry.AUTH_TIMEOUT_SECONDS))
                     .build();
             
-            HttpResponse<String> response = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
+            HttpResponse<String> response = httpClient().send(request, HttpResponse.BodyHandlers.ofString());
             
             long retryAfterMs = extractRetryAfter(response);
             boolean wasRateLimited = response.statusCode() == 429;
@@ -792,7 +810,7 @@ public class SessionAccount implements Account {
                     .timeout(Duration.ofSeconds(NullTraceConstants.Retry.AUTH_TIMEOUT_SECONDS))
                     .build();
             
-            HttpResponse<String> response = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
+            HttpResponse<String> response = httpClient().send(request, HttpResponse.BodyHandlers.ofString());
             
             long retryAfterMs = extractRetryAfter(response);
             boolean wasRateLimited = response.statusCode() == 429;
@@ -845,9 +863,13 @@ public class SessionAccount implements Account {
     public JsonObject toJson() {
         JsonObject json = new JsonObject();
         json.addProperty("type", "session");
-        json.addProperty("accessToken", accessToken);
-        if (refreshToken != null && !refreshToken.isBlank()) {
-            json.addProperty("refreshToken", refreshToken);
+        String encryptedAccessToken = AccountTokenVault.encrypt(accessToken);
+        if (encryptedAccessToken != null) {
+            json.addProperty("accessTokenEncrypted", encryptedAccessToken);
+        }
+        String encryptedRefreshToken = AccountTokenVault.encrypt(refreshToken);
+        if (encryptedRefreshToken != null) {
+            json.addProperty("refreshTokenEncrypted", encryptedRefreshToken);
         }
         json.addProperty("username", username);
         json.addProperty("uuid", uuid);
@@ -857,18 +879,31 @@ public class SessionAccount implements Account {
     }
     
     public static SessionAccount fromJson(JsonObject json) {
-        String token = json.has("accessToken") ? json.get("accessToken").getAsString() : "";
+        String token = json.has("accessTokenEncrypted")
+                ? AccountTokenVault.decrypt(json.get("accessTokenEncrypted").getAsString()) : null;
+        String refresh = json.has("refreshTokenEncrypted")
+                ? AccountTokenVault.decrypt(json.get("refreshTokenEncrypted").getAsString()) : null;
+        if (token == null && json.has("accessToken")) {
+            // One-time migration for old files. Never write this field back.
+            token = json.get("accessToken").getAsString();
+        }
         String username = json.has("username") ? json.get("username").getAsString() : "";
         String uuid = json.has("uuid") ? json.get("uuid").getAsString() : "";
         
-        SessionAccount account = new SessionAccount(token, username, uuid);
-        if (json.has("refreshToken")) {
-            account.refreshToken = json.get("refreshToken").getAsString();
+        SessionAccount account = new SessionAccount(token == null ? "" : token, username, uuid);
+        account.refreshToken = refresh;
+        if (token == null || token.isBlank()) {
+            account.valid = false;
+            account.lastError = "Re-authentication required";
+        }
+        if (json.has("accessToken") || json.has("refreshToken")) {
+            account.legacyPlaintextTokens = true;
+            NullTrace.LOGGER.warn("[NullTrace] Plaintext account token found; it will be encrypted on the next save");
         }
         if (json.has("lastValidated")) {
             account.lastValidated = json.get("lastValidated").getAsLong();
         }
-        if (json.has("valid")) {
+        if (json.has("valid") && token != null && !token.isBlank()) {
             account.valid = json.get("valid").getAsBoolean();
         }
         return account;

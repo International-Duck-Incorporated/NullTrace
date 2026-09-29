@@ -78,6 +78,13 @@ public final class NullTraceStrings {
 
     public static final String OPTION_CHAT_SIGNING = "nulltrace.option.chatSigning";
     public static final String OPTION_DISABLE_TELEMETRY = "nulltrace.option.disableTelemetry";
+    public static final String OPTION_NORMALIZE_CLIENT_INFORMATION = "nulltrace.option.normalizeClientInformation";
+    public static final String OPTION_NORMALIZED_LANGUAGE = "nulltrace.option.normalizedLanguage";
+    public static final String OPTION_NORMALIZED_VIEW_DISTANCE = "nulltrace.option.normalizedViewDistance";
+    public static final String OPTION_NORMALIZED_CHAT_VISIBILITY = "nulltrace.option.normalizedChatVisibility";
+    public static final String OPTION_NORMALIZE_PARTICLES = "nulltrace.option.normalizeParticles";
+    public static final String OPTION_SERVER_PROFILE = "nulltrace.option.serverProfile";
+    public static final String OPTION_SERVER_PROFILE_TOOLTIP = "nulltrace.option.serverProfile.tooltip";
     public static final String OPTION_USE_PROXY = "nulltrace.option.useProxy";
     public static final String OPTION_USE_PROXY_TOOLTIP = "nulltrace.option.useProxy.tooltip";
     public static final String OPTION_BLOCK_SERVER_COOKIES = "nulltrace.option.blockServerCookies";
@@ -147,6 +154,22 @@ public final class NullTraceStrings {
     public static final String COMMAND_HELP_HEADER = "nulltrace.command.help.header";
     public static final String COMMAND_HELP_INFO = "nulltrace.command.help.info";
     public static final String COMMAND_HELP_CHANNELS = "nulltrace.command.help.channels";
+    public static final String COMMAND_HELP_AUDIT = "nulltrace.command.help.audit";
+    public static final String COMMAND_AUDIT_HEADER = "nulltrace.command.audit.header";
+    public static final String COMMAND_AUDIT_SERVER = "nulltrace.command.audit.server";
+    public static final String COMMAND_AUDIT_PROFILE = "nulltrace.command.audit.profile";
+    public static final String COMMAND_AUDIT_BRAND = "nulltrace.command.audit.brand";
+    public static final String COMMAND_AUDIT_CHANNELS = "nulltrace.command.audit.channels";
+    public static final String COMMAND_AUDIT_KNOWN_PACKS = "nulltrace.command.audit.knownPacks";
+    public static final String COMMAND_AUDIT_TRANSLATIONS = "nulltrace.command.audit.translations";
+    public static final String COMMAND_AUDIT_RESOURCES = "nulltrace.command.audit.resources";
+    public static final String COMMAND_AUDIT_LOCAL = "nulltrace.command.audit.local";
+    public static final String COMMAND_AUDIT_SHADERS = "nulltrace.command.audit.shaders";
+    public static final String COMMAND_AUDIT_EXPOSURE = "nulltrace.command.audit.exposure";
+    public static final String COMMAND_AUDIT_EVENTS = "nulltrace.command.audit.events";
+    public static final String COMMAND_AUDIT_REASON = "nulltrace.command.audit.reason";
+    public static final String COMMAND_PROFILE_HEADER = "nulltrace.command.profile.header";
+    public static final String COMMAND_PROFILE_SET = "nulltrace.command.profile.set";
 
     public static final String COMMAND_OVERVIEW_HEADER = "nulltrace.command.overview.header";
     public static final String COMMAND_OVERVIEW_TOTAL_MODS = "nulltrace.command.overview.totalMods";

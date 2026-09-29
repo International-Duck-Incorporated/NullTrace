@@ -9,6 +9,7 @@ import net.nulltrace.mod.lang.NullTraceStrings;
 import net.nulltrace.mod.mixin.MeteorMixinCanceller;
 import net.nulltrace.mod.protection.ResourcePackGuard;
 import net.nulltrace.mod.tracking.ModRegistry;
+import net.nulltrace.mod.privacy.ServerProfile;
 import net.fabricmc.loader.api.FabricLoader;
 import net.fabricmc.loader.api.ModContainer;
 //? if >=26.1 {
@@ -236,6 +237,28 @@ public class NullTraceConfigScreen extends Screen {
                     }));
         }
 
+        // Client-information normalization is configurable rather than an
+        // unconditional packet rewrite. The current defaults preserve the old
+        // privacy behavior, while DEFAULT values restore vanilla behavior.
+        widgets.add(cycleBuilder(COLORED_BOOL_TO_TEXT, List.of(Boolean.TRUE, Boolean.FALSE), settings.isNormalizeClientInformation())
+                .withTooltip(v -> Tooltip.create(NullTraceLang.component(NullTraceStrings.OPTION_NORMALIZE_CLIENT_INFORMATION)))
+                .create(0, 0, 230, 20, NullTraceLang.component(NullTraceStrings.OPTION_NORMALIZE_CLIENT_INFORMATION),
+                        (button, value) -> { settings.setNormalizeClientInformation(value); config.save(); refreshScreen(); }));
+        if (settings.isNormalizeClientInformation()) {
+            widgets.add(cycleBuilder(v -> Component.literal(v.name()), List.of(SpoofSettings.NormalizedLanguage.values()), settings.getNormalizedLanguage())
+                    .create(0, 0, 230, 20, NullTraceLang.component(NullTraceStrings.OPTION_NORMALIZED_LANGUAGE),
+                            (button, value) -> { settings.setNormalizedLanguage(value); config.save(); }));
+            widgets.add(cycleBuilder(v -> Component.literal(v.name()), List.of(SpoofSettings.NormalizedViewDistance.values()), settings.getNormalizedViewDistance())
+                    .create(0, 0, 230, 20, NullTraceLang.component(NullTraceStrings.OPTION_NORMALIZED_VIEW_DISTANCE),
+                            (button, value) -> { settings.setNormalizedViewDistance(value); config.save(); }));
+            widgets.add(cycleBuilder(v -> Component.literal(v.name()), List.of(SpoofSettings.NormalizedChatVisibility.values()), settings.getNormalizedChatVisibility())
+                    .create(0, 0, 230, 20, NullTraceLang.component(NullTraceStrings.OPTION_NORMALIZED_CHAT_VISIBILITY),
+                            (button, value) -> { settings.setNormalizedChatVisibility(value); config.save(); }));
+            widgets.add(cycleBuilder(COLORED_BOOL_TO_TEXT, List.of(Boolean.TRUE, Boolean.FALSE), settings.isNormalizeParticles())
+                    .create(0, 0, 230, 20, NullTraceLang.component(NullTraceStrings.OPTION_NORMALIZE_PARTICLES),
+                            (button, value) -> { settings.setNormalizeParticles(value); config.save(); }));
+        }
+
         // Resource Pack Protection Section
         widgets.add(createSectionHeader(NullTraceLang.tr(NullTraceStrings.SECTION_RESOURCE_PACK)));
 
@@ -398,6 +421,14 @@ public class NullTraceConfigScreen extends Screen {
     private Tab createMiscTab(SpoofSettings settings) {
         List<AbstractWidget> widgets = new ArrayList<>();
         
+        // Server profile controls are kept on the misc tab because they affect
+        // the whole connection policy, not one protection implementation.
+        widgets.add(createSectionHeader(NullTraceLang.tr(NullTraceStrings.OPTION_SERVER_PROFILE)));
+        widgets.add(cycleBuilder(v -> Component.literal(v.name()), List.of(ServerProfile.Mode.values()), config.getCurrentProfileMode())
+                .withTooltip(v -> Tooltip.create(NullTraceLang.component(NullTraceStrings.OPTION_SERVER_PROFILE_TOOLTIP)))
+                .create(0, 0, 230, 20, NullTraceLang.component(NullTraceStrings.OPTION_SERVER_PROFILE),
+                        (button, value) -> config.setCurrentProfileMode(value)));
+
         // Alerts & Logging Section
         widgets.add(createSectionHeader(NullTraceLang.tr(NullTraceStrings.SECTION_ALERTS)));
         

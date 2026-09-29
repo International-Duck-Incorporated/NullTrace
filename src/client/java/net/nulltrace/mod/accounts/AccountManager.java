@@ -194,7 +194,16 @@ public class AccountManager {
         JsonObject json = new JsonObject();
         JsonArray accountsArray = new JsonArray();
         for (Account account : accounts) {
-            accountsArray.add(account.toJson());
+            // Exports are often copied or uploaded. Never export bearer tokens,
+            // including the encrypted-at-rest representation (the recipient
+            // cannot decrypt it without this installation's vault key anyway).
+            JsonObject safe = account.toJson();
+            safe.remove("accessToken");
+            safe.remove("refreshToken");
+            safe.remove("accessTokenEncrypted");
+            safe.remove("refreshTokenEncrypted");
+            safe.addProperty("requiresReauthentication", !account.isCracked());
+            accountsArray.add(safe);
         }
         json.add("accounts", accountsArray);
         return GSON.toJson(json);
@@ -333,6 +342,7 @@ public class AccountManager {
             JsonObject json = JsonParser.parseString(content).getAsJsonObject();
             
             accounts.clear();
+            boolean migratedPlaintextTokens = false;
             
             if (json.has("accounts")) {
                 JsonArray accountsArray = json.getAsJsonArray("accounts");
@@ -342,6 +352,10 @@ public class AccountManager {
                         Account account = Account.fromJson(accountJson);
                         if (account.hasValidInfo()) {
                             accounts.add(account);
+                            if (account instanceof SessionAccount session
+                                    && session.hadLegacyPlaintextTokens()) {
+                                migratedPlaintextTokens = true;
+                            }
                         }
                     } catch (Exception e) {
                         NullTrace.LOGGER.warn("[NullTrace] Failed to load account at index {}: {}", i, e.getMessage());
@@ -357,6 +371,10 @@ public class AccountManager {
             }
             
             NullTrace.LOGGER.info("[NullTrace] Loaded {} accounts", accounts.size());
+            if (migratedPlaintextTokens) {
+                save();
+                NullTrace.LOGGER.info("[NullTrace] Migrated account tokens to encrypted storage");
+            }
             
         } catch (IOException e) {
             NullTrace.LOGGER.error("[NullTrace] Failed to load accounts: {}", e.getMessage());

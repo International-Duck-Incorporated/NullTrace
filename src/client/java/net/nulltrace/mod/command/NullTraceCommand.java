@@ -5,6 +5,12 @@ import net.nulltrace.mod.config.SpoofSettings;
 import net.nulltrace.mod.lang.NullTraceLang;
 import net.nulltrace.mod.lang.NullTraceStrings;
 import net.nulltrace.mod.tracking.ModRegistry;
+import net.nulltrace.mod.privacy.AuditLedger;
+import net.nulltrace.mod.privacy.PrivacyAction;
+import net.nulltrace.mod.privacy.PrivacyAudit;
+import net.nulltrace.mod.privacy.PrivacyDecision;
+import net.nulltrace.mod.privacy.PrivacySurface;
+import net.nulltrace.mod.privacy.ServerProfile;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.context.CommandContext;
@@ -50,20 +56,45 @@ public class NullTraceCommand {
     
     private static void registerCommands(CommandDispatcher<FabricClientCommandSource> dispatcher, 
                                           CommandBuildContext context) {
+        // Audit is intentionally available even when the optional debug command is
+        // disabled: privacy must be inspectable without enabling diagnostics.
         dispatcher.register(
             //? if >=26.1 {
             ClientCommands.literal("nulltrace")
             //?} else {
             /*ClientCommandManager.literal("nulltrace")
             *///?}
-                .requires(source -> NullTraceConfig.getInstance().getSettings().isDebugCommand())
                 .executes(NullTraceCommand::showHelp)
+                .then(
+                    //? if >=26.1 {
+                    ClientCommands.literal("audit")
+                    //?} else {
+                    /*ClientCommandManager.literal("audit")
+                    *///?}
+                    .executes(NullTraceCommand::showAudit))
+                .then(
+                    //? if >=26.1 {
+                    ClientCommands.literal("profile")
+                    //?} else {
+                    /*ClientCommandManager.literal("profile")
+                    *///?}
+                    .executes(NullTraceCommand::showProfile)
+                    .then(
+                        //? if >=26.1 {
+                        ClientCommands.argument("mode", StringArgumentType.word())
+                        //?} else {
+                        /*ClientCommandManager.argument("mode", StringArgumentType.word())
+                        *///?}
+                        .suggests((ctx, builder) -> SharedSuggestionProvider.suggest(
+                                List.of("STANDARD", "STRICT", "MAXIMUM_PRIVACY", "CUSTOM"), builder))
+                        .executes(NullTraceCommand::setProfile)))
                 .then(
                     //? if >=26.1 {
                     ClientCommands.literal("info")
                     //?} else {
                     /*ClientCommandManager.literal("info")
                     *///?}
+                    .requires(source -> NullTraceConfig.getInstance().getSettings().isDebugCommand())
                     .then(
                         //? if >=26.1 {
                         ClientCommands.argument("modName", StringArgumentType.greedyString())
@@ -79,6 +110,7 @@ public class NullTraceCommand {
                     //?} else {
                     /*ClientCommandManager.literal("channels")
                     *///?}
+                    .requires(source -> NullTraceConfig.getInstance().getSettings().isDebugCommand())
                     .executes(NullTraceCommand::showAllChannels))
         );
     }
@@ -93,6 +125,7 @@ public class NullTraceCommand {
         source.sendFeedback(Component.empty());
         source.sendFeedback(info(NullTraceLang.tr(NullTraceStrings.COMMAND_HELP_INFO)));
         source.sendFeedback(info(NullTraceLang.tr(NullTraceStrings.COMMAND_HELP_CHANNELS)));
+        source.sendFeedback(info(NullTraceLang.tr(NullTraceStrings.COMMAND_HELP_AUDIT)));
         
         return 1;
     }
@@ -120,6 +153,94 @@ public class NullTraceCommand {
         return SharedSuggestionProvider.suggest(modNames, builder);
     }
     
+    private static int showProfile(CommandContext<FabricClientCommandSource> ctx) {
+        FabricClientCommandSource source = ctx.getSource();
+        NullTraceConfig config = NullTraceConfig.getInstance();
+        source.sendFeedback(header(NullTraceLang.tr(NullTraceStrings.COMMAND_PROFILE_HEADER)));
+        source.sendFeedback(info(NullTraceLang.tr(NullTraceStrings.COMMAND_AUDIT_SERVER,
+                config.getCurrentServer())));
+        source.sendFeedback(info(NullTraceLang.tr(NullTraceStrings.COMMAND_AUDIT_PROFILE,
+                config.getCurrentProfileMode().name())));
+        return 1;
+    }
+
+    private static int setProfile(CommandContext<FabricClientCommandSource> ctx) {
+        FabricClientCommandSource source = ctx.getSource();
+        String raw = StringArgumentType.getString(ctx, "mode");
+        try {
+            ServerProfile.Mode mode = ServerProfile.Mode.valueOf(raw.toUpperCase(java.util.Locale.ROOT));
+            NullTraceConfig.getInstance().setCurrentProfileMode(mode);
+            source.sendFeedback(success(NullTraceLang.tr(NullTraceStrings.COMMAND_PROFILE_SET,
+                    NullTraceConfig.getInstance().getCurrentServer(), mode.name())));
+            return 1;
+        } catch (IllegalArgumentException e) {
+            source.sendFeedback(error("Unknown profile: " + raw));
+            return 0;
+        }
+    }
+
+    /**
+     * Print an explainable snapshot of the active privacy policy and decisions.
+     */
+    private static int showAudit(CommandContext<FabricClientCommandSource> ctx) {
+        FabricClientCommandSource source = ctx.getSource();
+        NullTraceConfig config = NullTraceConfig.getInstance();
+        AuditLedger ledger = PrivacyAudit.ledger();
+        var policy = config.privacyPolicy();
+
+        int totalChannels = 0;
+        for (ModRegistry.ModInfo mod : ModRegistry.getAllMods()) totalChannels += mod.getChannels().size();
+        int blockedChannels = policy.actionFor(PrivacySurface.MOD_CHANNEL) == PrivacyAction.BLOCK
+                ? totalChannels : 0;
+        int allowedChannels = totalChannels - blockedChannels;
+
+        int knownPacks = ModRegistry.isKnownPacksHookPresent() ? ModRegistry.getKnownPackCount() : 0;
+        int blockedKnownPacks = policy.actionFor(PrivacySurface.KNOWN_PACK) == PrivacyAction.BLOCK ? knownPacks : 0;
+        int translations = ModRegistry.getTranslationKeyCount();
+        int blockedTranslations = policy.actionFor(PrivacySurface.TRANSLATION_PROBE) == PrivacyAction.BLOCK ? translations : 0;
+        int shaders = ModRegistry.getShaderCount();
+        int strippedShaders = config.shouldStripModShaders() ? shaders : 0;
+
+        long ledgerBlocked = ledger.count(PrivacyAction.BLOCK);
+        long ledgerAllowed = ledger.count(PrivacyAction.ALLOW);
+        long ledgerWarnings = ledger.count(PrivacyAction.WARN);
+        int remaining = ledger.remainingExposure() + allowedChannels
+                + (config.shouldSpoofBrand() ? 0 : 1)
+                + (knownPacks - blockedKnownPacks)
+                + (translations - blockedTranslations);
+
+        source.sendFeedback(header(NullTraceLang.tr(NullTraceStrings.COMMAND_AUDIT_HEADER)));
+        source.sendFeedback(info(NullTraceLang.tr(NullTraceStrings.COMMAND_AUDIT_SERVER, config.getCurrentServer())));
+        source.sendFeedback(info(NullTraceLang.tr(NullTraceStrings.COMMAND_AUDIT_PROFILE,
+                config.getCurrentProfileMode().name())));
+        source.sendFeedback(info(NullTraceLang.tr(NullTraceStrings.COMMAND_AUDIT_BRAND,
+                config.shouldSpoofBrand() ? "BLOCKED" : "EXPOSED")));
+        source.sendFeedback(info(NullTraceLang.tr(NullTraceStrings.COMMAND_AUDIT_CHANNELS,
+                blockedChannels, allowedChannels)));
+        source.sendFeedback(info(NullTraceLang.tr(NullTraceStrings.COMMAND_AUDIT_KNOWN_PACKS,
+                blockedKnownPacks, knownPacks - blockedKnownPacks)));
+        source.sendFeedback(info(NullTraceLang.tr(NullTraceStrings.COMMAND_AUDIT_TRANSLATIONS,
+                blockedTranslations, translations - blockedTranslations)));
+        source.sendFeedback(info(NullTraceLang.tr(NullTraceStrings.COMMAND_AUDIT_RESOURCES,
+                ledger.counts(PrivacyAction.BLOCK).getOrDefault(PrivacySurface.RESOURCE_PACK, 0).intValue(),
+                ledger.counts(PrivacyAction.ALLOW).getOrDefault(PrivacySurface.RESOURCE_PACK, 0).intValue())));
+        source.sendFeedback(info(NullTraceLang.tr(NullTraceStrings.COMMAND_AUDIT_LOCAL,
+                ledger.counts(PrivacyAction.BLOCK).getOrDefault(PrivacySurface.LOCAL_REQUEST, 0).intValue(),
+                ledger.counts(PrivacyAction.WARN).getOrDefault(PrivacySurface.LOCAL_REQUEST, 0).intValue())));
+        source.sendFeedback(info(NullTraceLang.tr(NullTraceStrings.COMMAND_AUDIT_SHADERS, strippedShaders)));
+        source.sendFeedback(info(NullTraceLang.tr(NullTraceStrings.COMMAND_AUDIT_EXPOSURE, remaining)));
+        source.sendFeedback(dim(NullTraceLang.tr(NullTraceStrings.COMMAND_AUDIT_EVENTS,
+                ledgerBlocked, ledgerAllowed, ledgerWarnings)));
+
+        int shown = 0;
+        for (PrivacyDecision decision : ledger.events()) {
+            if (shown++ >= 8) break;
+            source.sendFeedback(dim(NullTraceLang.tr(NullTraceStrings.COMMAND_AUDIT_REASON,
+                    decision.surface(), decision.subject(), decision.reason())));
+        }
+        return 1;
+    }
+
     /**
      * Show overview of all tracked mods.
      */

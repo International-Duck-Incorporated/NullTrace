@@ -18,13 +18,13 @@ import java.util.concurrent.CompletableFuture;
 
 /**
  * Async jar integrity checker that compares the running mod jar's SHA-256 hash
- * against the expected digest computed from the matching GitHub release asset.
+ * against the checksum published with the matching GitLab release asset.
  * All state fields are volatile for cross-thread visibility since the check runs
  * on a background thread and results are read on the render thread.
  */
 public final class JarIntegrityChecker {
 
-    private static final String RELEASES_BASE_URL = "https://api.github.com/repos/International-Duck-Incorporated/NullTrace/releases/tags/V";
+    private static final String RELEASES_BASE_URL = "https://gitlab.com/api/v4/projects/international-duck-incorporated%2FNullTrace/releases/v";
 
     private static final HttpClient HTTP_CLIENT = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(10))
@@ -43,7 +43,7 @@ public final class JarIntegrityChecker {
 
     /**
      * Fires an async integrity check that computes the local jar's SHA-256 and
-     * compares it against the SHA-256 of the matching GitHub release asset.
+     * compares it against the SHA-256 checksum published with the matching GitLab release asset.
      * Non-blocking: runs on a daemon thread via CompletableFuture.
      */
     public static void checkIntegrity() {
@@ -81,12 +81,12 @@ public final class JarIntegrityChecker {
                     return;
                 }
 
-                // Step 4: Fetch the GitHub release matching the current mod version
+                // Step 4: Fetch the GitLab release matching the current mod version
                 String currentVersion = NullTrace.getVersion();
                 HttpRequest request = HttpRequest.newBuilder()
                         .uri(URI.create(RELEASES_BASE_URL + currentVersion))
                         .header("User-Agent", "NullTrace-Mod/" + currentVersion)
-                        .header("Accept", "application/vnd.github.v3+json")
+                        .header("Accept", "application/json")
                         .timeout(Duration.ofSeconds(10))
                         .GET()
                         .build();
@@ -100,37 +100,47 @@ public final class JarIntegrityChecker {
                 }
 
                 if (response.statusCode() != 200) {
-                    NullTrace.LOGGER.debug("[NullTrace] GitHub API returned status {}, skipping integrity check", response.statusCode());
+                    NullTrace.LOGGER.debug("[NullTrace] GitLab API returned status {}, skipping integrity check", response.statusCode());
                     return;
                 }
 
                 JsonObject json = JsonParser.parseString(response.body()).getAsJsonObject();
-
-                if (!json.has("assets")) {
-                    NullTrace.LOGGER.debug("[NullTrace] No assets in release response, skipping integrity check");
+                if (!json.has("assets") || !json.getAsJsonObject("assets").has("links")) {
+                    NullTrace.LOGGER.debug("[NullTrace] No GitLab release assets, skipping integrity check");
                     return;
                 }
 
-                JsonArray assets = json.getAsJsonArray("assets");
-                JsonObject matchingAsset = findMatchingAsset(assets, mcVersion);
-
+                JsonArray links = json.getAsJsonObject("assets").getAsJsonArray("links");
+                JsonObject matchingAsset = findMatchingAsset(links, mcVersion);
                 if (matchingAsset == null) {
                     NullTrace.LOGGER.debug("[NullTrace] No release asset found for MC version {}, skipping integrity check", mcVersion);
                     return;
                 }
 
-                // Step 5: Extract SHA-256 digest from GitHub API response
-                // GitHub provides "digest": "sha256:abc123..." for each release asset
-                String digestField = matchingAsset.has("digest")
-                        ? matchingAsset.get("digest").getAsString()
-                        : null;
-
-                if (digestField == null || !digestField.startsWith("sha256:")) {
-                    NullTrace.LOGGER.debug("[NullTrace] No SHA-256 digest for matching asset, skipping integrity check");
+                String jarName = matchingAsset.get("name").getAsString();
+                JsonObject checksumAsset = findChecksumAsset(links, jarName + ".sha256");
+                if (checksumAsset == null || !checksumAsset.has("url")) {
+                    NullTrace.LOGGER.debug("[NullTrace] No SHA-256 checksum asset for {}, skipping integrity check", jarName);
                     return;
                 }
 
-                expectedDigest = digestField.substring("sha256:".length());
+                HttpRequest checksumRequest = HttpRequest.newBuilder()
+                        .uri(URI.create(checksumAsset.get("url").getAsString()))
+                        .header("User-Agent", "NullTrace-Mod/" + currentVersion)
+                        .timeout(Duration.ofSeconds(10))
+                        .GET().build();
+                HttpResponse<String> checksumResponse = HTTP_CLIENT.send(
+                        checksumRequest, HttpResponse.BodyHandlers.ofString());
+                if (checksumResponse.statusCode() != 200) {
+                    NullTrace.LOGGER.debug("[NullTrace] Checksum asset returned status {}, skipping integrity check", checksumResponse.statusCode());
+                    return;
+                }
+                String[] checksumParts = checksumResponse.body().trim().split("\\s+");
+                if (checksumParts.length == 0 || !checksumParts[0].matches("[0-9a-fA-F]{64}")) {
+                    NullTrace.LOGGER.debug("[NullTrace] Invalid SHA-256 checksum asset, skipping integrity check");
+                    return;
+                }
+                expectedDigest = checksumParts[0].toLowerCase(java.util.Locale.ROOT);
 
                 // Step 6: Compare digests (constant-time comparison)
                 if (!MessageDigest.isEqual(expectedDigest.getBytes(), actualDigest.getBytes())) {
@@ -179,7 +189,7 @@ public final class JarIntegrityChecker {
     }
 
     /**
-     * Returns the expected SHA-256 digest from the GitHub release asset, or null if not yet checked.
+     * Returns the expected SHA-256 digest from the GitLab release checksum asset, or null if not yet checked.
      */
     public static String getExpectedDigest() {
         return expectedDigest;
@@ -204,7 +214,7 @@ public final class JarIntegrityChecker {
             if (!name.startsWith("nulltrace-") || !name.endsWith(".jar")) continue;
 
             // Extract version range: between "nulltrace-" and "+v"
-            int rangeStart = 6; // "nulltrace-".length()
+            int rangeStart = "nulltrace-".length();
             int rangeEnd = name.indexOf("+v");
             if (rangeEnd <= rangeStart) continue;
 
@@ -221,6 +231,16 @@ public final class JarIntegrityChecker {
                 if (compareVersions(mcVersion, min) >= 0 && compareVersions(mcVersion, max) <= 0) {
                     return asset;
                 }
+            }
+        }
+        return null;
+    }
+
+    private static JsonObject findChecksumAsset(JsonArray links, String checksumName) {
+        for (JsonElement element : links) {
+            JsonObject link = element.getAsJsonObject();
+            if (checksumName.equals(link.has("name") ? link.get("name").getAsString() : "")) {
+                return link;
             }
         }
         return null;

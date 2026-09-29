@@ -12,14 +12,14 @@ import java.time.Duration;
 import java.util.concurrent.CompletableFuture;
 
 /**
- * Async update checker that queries the GitHub releases API to detect new versions.
+ * Async update checker that queries the GitLab releases API to detect new versions.
  * All state fields are volatile for cross-thread visibility since the check runs
  * on a background thread and results are read on the render thread.
  */
 public final class UpdateChecker {
 
-    private static final String RELEASES_URL = "https://api.github.com/repos/International-Duck-Incorporated/NullTrace/releases/latest";
-    private static final String FALLBACK_RELEASE_URL = "https://github.com/International-Duck-Incorporated/NullTrace/releases/latest";
+    private static final String RELEASES_URL = "https://gitlab.com/api/v4/projects/international-duck-incorporated%2FNullTrace/releases/permalink/latest";
+    private static final String FALLBACK_RELEASE_URL = "https://gitlab.com/international-duck-incorporated/NullTrace/-/releases";
 
     private static final HttpClient HTTP_CLIENT = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(10))
@@ -37,7 +37,7 @@ public final class UpdateChecker {
     }
 
     /**
-     * Fires an async HTTP GET to the GitHub releases API to check for updates.
+     * Fires an async HTTP GET to the GitLab releases API to check for updates.
      * Non-blocking: runs on a daemon thread via CompletableFuture.
      */
     public static void checkForUpdate() {
@@ -47,7 +47,7 @@ public final class UpdateChecker {
                 HttpRequest request = HttpRequest.newBuilder()
                         .uri(URI.create(RELEASES_URL))
                         .header("User-Agent", "NullTrace-Mod/" + currentVersion)
-                        .header("Accept", "application/vnd.github.v3+json")
+                        .header("Accept", "application/json")
                         .timeout(Duration.ofSeconds(10))
                         .GET()
                         .build();
@@ -58,7 +58,8 @@ public final class UpdateChecker {
                     JsonObject json = JsonParser.parseString(response.body()).getAsJsonObject();
 
                     String tagName = json.has("tag_name") ? json.get("tag_name").getAsString() : null;
-                    String htmlUrl = json.has("html_url") ? json.get("html_url").getAsString() : null;
+                    String htmlUrl = json.has("_links") && json.getAsJsonObject("_links").has("web")
+                            ? json.getAsJsonObject("_links").get("web").getAsString() : null;
 
                     if (tagName != null) {
                         // Strip leading "v" or "V" if present (e.g., "V1.0.5" -> "1.0.5")
@@ -75,7 +76,7 @@ public final class UpdateChecker {
                         }
                     }
                 } else {
-                    NullTrace.LOGGER.debug("[NullTrace] GitHub API returned status {}", response.statusCode());
+                    NullTrace.LOGGER.debug("[NullTrace] GitLab API returned status {}", response.statusCode());
                 }
             } catch (Exception e) {
                 NullTrace.LOGGER.debug("[NullTrace] Update check failed: {}", e.getMessage());
@@ -96,14 +97,14 @@ public final class UpdateChecker {
     }
 
     /**
-     * Returns the latest version string from GitHub, or null if not yet checked.
+     * Returns the latest version string from GitLab, or null if not yet checked.
      */
     public static String getLatestVersion() {
         return latestVersion;
     }
 
     /**
-     * Returns the URL to the latest release page on GitHub.
+     * Returns the URL to the latest release page on GitLab.
      * Falls back to the generic latest release URL if not available.
      */
     public static String getReleaseUrl() {

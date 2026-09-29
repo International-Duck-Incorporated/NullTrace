@@ -9,6 +9,7 @@ import net.nulltrace.mod.detection.PacketContext;
 import net.nulltrace.mod.protection.PackStripHandler;
 import net.nulltrace.mod.protection.PackStripOverlay;
 import net.nulltrace.mod.protection.TranslationProtectionHandler;
+import net.nulltrace.mod.privacy.PrivacyAudit;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientPacketListener;
 import net.minecraft.network.PacketListener;
@@ -111,6 +112,7 @@ public abstract class ClientPacketListenerMixin {
         }
 
         NullTraceConfig.getInstance().setCurrentServer(serverAddress);
+        PrivacyAudit.begin(serverAddress, "unknown");
 
         // Schedule port scan summary after 2 seconds
         nulltrace$pendingTask = nulltrace$getScheduler().schedule(() -> {

@@ -51,7 +51,7 @@ public class NullTraceClient implements ClientModInitializer {
 		// Check for mod updates (non-blocking)
 		UpdateChecker.checkForUpdate();
 
-		// Check jar integrity against GitHub release (non-blocking)
+		// Check jar integrity against the GitLab release checksum (non-blocking)
 		JarIntegrityChecker.checkIntegrity();
 
 		// Scan for registered channels after all mods have initialized

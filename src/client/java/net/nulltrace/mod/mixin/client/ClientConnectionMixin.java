@@ -3,6 +3,9 @@ package net.nulltrace.mod.mixin.client;
 import net.nulltrace.mod.NullTrace;
 import net.nulltrace.mod.config.NullTraceConfig;
 import net.nulltrace.mod.tracking.ModRegistry;
+import net.nulltrace.mod.privacy.PrivacyAction;
+import net.nulltrace.mod.privacy.PrivacyAudit;
+import net.nulltrace.mod.privacy.PrivacySurface;
 import net.nulltrace.mod.util.LocalAddressUtil;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
@@ -159,12 +162,16 @@ public class ClientConnectionMixin {
                     || "app_details".equals(payloadId.getPath())
                     || "proxy_details".equals(payloadId.getPath()))) {
                 NullTrace.LOGGER.debug("[NullTrace] Blocking Via identity payload: {}", payloadId);
+                PrivacyAudit.record(PrivacySurface.MOD_CHANNEL, payloadId.toString(),
+                        PrivacyAction.BLOCK, "Known client-identity channel");
                 promise.setSuccess();
                 return;
             }
 
             if (config.getSettings().isVanillaMode()) {
                 NullTrace.LOGGER.debug("[NullTrace] VANILLA MODE (pipeline) - Blocking: {}", payloadId);
+                PrivacyAudit.record(PrivacySurface.MOD_CHANNEL, payloadId.toString(),
+                        PrivacyAction.BLOCK, "Vanilla profile blocks custom payloads");
                 promise.setSuccess();
                 return;
             }
@@ -189,8 +196,14 @@ public class ClientConnectionMixin {
                         
                         NullTrace.LOGGER.debug("[NullTrace] FABRIC MODE (pipeline) - Filtered channels: {} -> {}", 
                             registrationPayload.channels().size(), filtered.size());
+                        if (filtered.size() < registrationPayload.channels().size()) {
+                            PrivacyAudit.record(PrivacySurface.MOD_CHANNEL, "minecraft:register",
+                                    PrivacyAction.BLOCK, "Registration payload contained blocked channels");
+                        }
                         
                         if (filtered.isEmpty()) {
+                            PrivacyAudit.record(PrivacySurface.MOD_CHANNEL, "minecraft:register",
+                                    PrivacyAction.BLOCK, "No registered channels are allowed by policy");
                             promise.setSuccess();
                             return;
                         }
@@ -214,6 +227,8 @@ public class ClientConnectionMixin {
                 }
 
                 NullTrace.LOGGER.debug("[NullTrace] FABRIC MODE (pipeline) - Blocking mod channel: {}", payloadId);
+                PrivacyAudit.record(PrivacySurface.MOD_CHANNEL, payloadId.toString(),
+                        PrivacyAction.BLOCK, "Channel is not allowed by the active profile");
                 promise.setSuccess();
                 return;
             }
@@ -486,7 +501,7 @@ public class ClientConnectionMixin {
         data.getBytes(data.readerIndex(), bytes);
         String joined = new String(bytes, java.nio.charset.StandardCharsets.UTF_8);
         List<ResourceLocation> result = new ArrayList<>();
-        for (String token : joined.split(" ")) {
+        for (String token : joined.split("\0")) {
             if (token.isEmpty()) continue;
             ResourceLocation parsed = ResourceLocation.tryParse(token);
             if (parsed != null) result.add(parsed);
@@ -498,7 +513,7 @@ public class ClientConnectionMixin {
     private static net.minecraft.network.FriendlyByteBuf nulltrace$writeRegisterPayload(List<ResourceLocation> channels) {
         StringBuilder sb = new StringBuilder();
         for (int i = 0; i < channels.size(); i++) {
-            if (i > 0) sb.append(' ');
+            if (i > 0) sb.append('\0');
             sb.append(channels.get(i).toString());
         }
         byte[] bytes = sb.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8);

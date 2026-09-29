@@ -1,5 +1,7 @@
 stages:
   - build
+  - test
+  - security
   - release
 
 workflow:
@@ -34,10 +36,54 @@ build:
     - mkdir -p release
     - find "versions/$MC_VERSION/build/libs" -maxdepth 1 -type f -name '*.jar' ! -name '*-sources.jar' ! -name '*-dev.jar' -exec cp {} release/ \;
     - test -n "$(find release -type f -name '*.jar' -print -quit)"
+    - for JAR in release/*.jar; do sha256sum "$JAR" > "$JAR.sha256"; done
   artifacts:
     name: "NullTrace-$MC_VERSION-$CI_COMMIT_SHORT_SHA"
     paths:
-      - release/*.jar
+      - release/*
+    expire_in: 30 days
+
+policy_tests:
+  stage: test
+  image: eclipse-temurin:25-jdk
+  script:
+    - chmod +x ./gradlew
+    - ./gradlew --no-daemon :26.3:test --stacktrace
+
+adversarial_fixture:
+  stage: test
+  image: python:3.12-alpine
+  script:
+    - python -m unittest discover -s tests -p 'test_*.py' -v
+
+security_audit:
+  stage: security
+  image: eclipse-temurin:25-jdk
+  needs:
+    - job: build
+      artifacts: true
+  script:
+    - chmod +x ./gradlew
+    - ./gradlew --no-daemon :26.3:dependencies --configuration runtimeClasspath > dependency-report.txt
+    - test -s dependency-report.txt
+    - test -n "$(find release -type f -name '*.jar' -print -quit)"
+    - |
+      set -eu
+      for JAR in release/*.jar; do
+        echo "Inspecting $JAR"
+        jar tf "$JAR" | grep -q 'fabric.mod.json'
+        jar tf "$JAR" | grep -q 'LICENSE'
+        if jar tf "$JAR" | grep -E '(^|/)accessToken$|(^|/)refreshToken$'; then
+          echo "Unexpected plaintext token resource in $JAR" >&2
+          exit 1
+        fi
+        sha256sum --check "$JAR.sha256"
+      done
+  artifacts:
+    when: always
+    paths:
+      - dependency-report.txt
+      - release/*.sha256
     expire_in: 30 days
 
 publish:
@@ -66,13 +112,13 @@ publish:
         --data-urlencode "description=NullTrace release $VERSION for Minecraft 1.21.11, 26.1, 26.2 and 26.3." \
         "$RELEASE_URL" || true
 
-      for JAR in release/*.jar; do
-        NAME="$(basename "$JAR")"
+      for ARTIFACT in release/*.jar release/*.sha256; do
+        NAME="$(basename "$ARTIFACT")"
         PACKAGE_URL="$API/packages/generic/nulltrace/$VERSION/$NAME"
 
         curl --fail-with-body --silent --show-error --request PUT \
           --header "JOB-TOKEN: $CI_JOB_TOKEN" \
-          --upload-file "$JAR" \
+          --upload-file "$ARTIFACT" \
           "$PACKAGE_URL"
 
         curl --fail-with-body --silent --show-error --request POST \
@@ -84,4 +130,4 @@ publish:
       done
 
       echo "Published $VERSION assets:"
-      find release -maxdepth 1 -type f -name '*.jar' -printf ' - %f\n'
+      find release -maxdepth 1 -type f \( -name '*.jar' -o -name '*.sha256' \) -printf ' - %f\n'

@@ -2,6 +2,10 @@ package net.nulltrace.mod.config;
 
 import net.nulltrace.mod.NullTrace;
 import net.nulltrace.mod.tracking.ModRegistry;
+import net.nulltrace.mod.privacy.PrivacyAction;
+import net.nulltrace.mod.privacy.PrivacyPolicy;
+import net.nulltrace.mod.privacy.PrivacySurface;
+import net.nulltrace.mod.privacy.ServerProfile;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonObject;
@@ -9,6 +13,8 @@ import com.google.gson.JsonParser;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import net.fabricmc.loader.api.FabricLoader;
 
 /**
@@ -65,6 +71,7 @@ public class NullTraceConfig {
 
     private SpoofSettings settings = new SpoofSettings();
     private volatile String currentServer = null;
+    private final Map<String, ServerProfile> serverProfiles = new LinkedHashMap<>();
 
     private NullTraceConfig() {
         load();
@@ -138,6 +145,17 @@ public class NullTraceConfig {
                 settings = SpoofSettings.fromJson(
                     json.getAsJsonObject("defaultSettings")
                 );
+            }
+
+            serverProfiles.clear();
+            if (json.has("serverProfiles") && json.get("serverProfiles").isJsonObject()) {
+                for (Map.Entry<String, com.google.gson.JsonElement> entry
+                        : json.getAsJsonObject("serverProfiles").entrySet()) {
+                    if (entry.getValue().isJsonObject()) {
+                        String server = normalizeAddress(entry.getKey());
+                        serverProfiles.put(server, ServerProfile.fromJson(server, entry.getValue().getAsJsonObject()));
+                    }
+                }
             }
 
             if (!validateAndCorrectSettings(settings)) {
@@ -238,6 +256,11 @@ public class NullTraceConfig {
         try {
             JsonObject json = new JsonObject();
             json.add("settings", settings.toJson());
+            JsonObject profiles = new JsonObject();
+            for (Map.Entry<String, ServerProfile> entry : serverProfiles.entrySet()) {
+                profiles.add(entry.getKey(), entry.getValue().toJson());
+            }
+            json.add("serverProfiles", profiles);
 
             Files.createDirectories(CONFIG_PATH.getParent());
 
@@ -276,13 +299,78 @@ public class NullTraceConfig {
         return currentServer;
     }
 
+    /** Returns a defensive copy of the configured profile for a server. */
+    public synchronized ServerProfile getServerProfile(String server) {
+        String key = normalizeAddress(server);
+        ServerProfile profile = serverProfiles.get(key);
+        if (profile == null) return new ServerProfile(key);
+        ServerProfile copy = ServerProfile.fromJson(key, profile.toJson());
+        return copy;
+    }
+
+    public synchronized ServerProfile.Mode getCurrentProfileMode() {
+        return getServerProfile(currentServer).mode();
+    }
+
+    public synchronized void setCurrentProfileMode(ServerProfile.Mode mode) {
+        String key = normalizeAddress(currentServer);
+        ServerProfile profile = serverProfiles.computeIfAbsent(key, ServerProfile::new);
+        profile.setMode(mode);
+        save();
+    }
+
+    public synchronized Map<String, ServerProfile> getServerProfiles() {
+        Map<String, ServerProfile> copy = new LinkedHashMap<>();
+        for (Map.Entry<String, ServerProfile> entry : serverProfiles.entrySet()) {
+            copy.put(entry.getKey(), ServerProfile.fromJson(entry.getKey(), entry.getValue().toJson()));
+        }
+        return Map.copyOf(copy);
+    }
+
+    /** Effective policy for the current connection. */
+    public synchronized PrivacyPolicy privacyPolicy() {
+        PrivacyPolicy.Builder builder = PrivacyPolicy.builder();
+        builder.action(PrivacySurface.CLIENT_BRAND,
+                shouldSpoofBrand() ? PrivacyAction.BLOCK : PrivacyAction.ALLOW)
+            .action(PrivacySurface.MOD_CHANNEL, settings.isVanillaMode()
+                ? PrivacyAction.BLOCK : PrivacyAction.WARN)
+            .action(PrivacySurface.KNOWN_PACK, shouldSpoofKnownPacks()
+                ? PrivacyAction.BLOCK : PrivacyAction.ALLOW)
+            .action(PrivacySurface.TRANSLATION_PROBE, isTranslationProtectionEnabled()
+                ? PrivacyAction.BLOCK : PrivacyAction.ALLOW)
+            .action(PrivacySurface.KEYBIND_PROBE, settings.isFakeDefaultKeybinds()
+                ? PrivacyAction.BLOCK : PrivacyAction.ALLOW)
+            .action(PrivacySurface.RESOURCE_PACK, shouldStripPack()
+                ? PrivacyAction.BLOCK : PrivacyAction.ALLOW)
+            .action(PrivacySurface.LOCAL_REQUEST, shouldBlockLocalPackUrls()
+                ? PrivacyAction.BLOCK : PrivacyAction.WARN)
+            .action(PrivacySurface.SHADER_OVERRIDE, shouldStripModShaders()
+                ? PrivacyAction.BLOCK : PrivacyAction.ALLOW)
+            .action(PrivacySurface.CLIENT_INFORMATION, shouldNormalizeClientInformation()
+                ? PrivacyAction.BLOCK : PrivacyAction.ALLOW)
+            .action(PrivacySurface.SERVER_COOKIE, settings.isBlockServerCookies()
+                ? PrivacyAction.BLOCK : PrivacyAction.ALLOW)
+            .action(PrivacySurface.SERVER_TRANSFER, settings.isBlockServerTransfers()
+                ? PrivacyAction.BLOCK : PrivacyAction.ALLOW);
+        ServerProfile profile = serverProfiles.get(normalizeAddress(currentServer));
+        if (profile != null && profile.mode() != ServerProfile.Mode.STANDARD) {
+            return profile.policy(builder.build());
+        }
+        return builder.build();
+    }
+
     // Identity protection
+    private boolean strictProfileActive() {
+        ServerProfile.Mode mode = getServerProfile(currentServer).mode();
+        return mode == ServerProfile.Mode.STRICT || mode == ServerProfile.Mode.MAXIMUM_PRIVACY;
+    }
+
     /**
-     * Whether the brand string should be overridden to "vanilla". Only true when
-     * the user opted in via the UI toggle and ExploitPreventer isn't loaded.
+     * Whether the brand string should be overridden to "vanilla". A strict
+     * server profile is allowed to strengthen the global setting, never weaken it.
      */
     public boolean shouldSpoofBrand() {
-        return !EXPLOIT_PREVENTER_LOADED && settings.isSpoofAsVanilla();
+        return !EXPLOIT_PREVENTER_LOADED && (settings.isSpoofAsVanilla() || strictProfileActive());
     }
 
     /**
@@ -292,12 +380,12 @@ public class NullTraceConfig {
      * isFabricMode in SpoofSettings, which read directly from spoofAsVanilla.
      */
     public boolean shouldSpoofChannels() {
-        return !EXPLOIT_PREVENTER_LOADED;
+        return !EXPLOIT_PREVENTER_LOADED && (settings.isSpoofAsVanilla() || strictProfileActive() || settings.isWhitelistEnabled());
     }
 
     /** Same EP gate as {@link #shouldSpoofChannels()} — kept distinct so the two can diverge without churn. */
     public boolean shouldSpoofKnownPacks() {
-        return !EXPLOIT_PREVENTER_LOADED;
+        return !EXPLOIT_PREVENTER_LOADED && (strictProfileActive() || settings.isSpoofAsVanilla() || settings.isWhitelistEnabled());
     }
 
     public String getEffectiveBrand() {
@@ -310,7 +398,7 @@ public class NullTraceConfig {
     }
 
     public boolean shouldBlockLocalPackUrls() {
-        return !EXPLOIT_PREVENTER_LOADED && settings.isBlockLocalPackUrls();
+        return !EXPLOIT_PREVENTER_LOADED && (settings.isBlockLocalPackUrls() || strictProfileActive());
     }
 
     /** Per-mod shader strip. Not EP-gated — EP lacks this defense, so NullTrace keeps it active under EP. */
@@ -327,7 +415,7 @@ public class NullTraceConfig {
     public boolean isTranslationProtectionEnabled() {
         return (
             !EXPLOIT_PREVENTER_LOADED &&
-            settings.isTranslationProtectionEnabled()
+            (settings.isTranslationProtectionEnabled() || strictProfileActive())
         );
     }
 
@@ -341,7 +429,30 @@ public class NullTraceConfig {
     }
 
     public boolean shouldStripPack() {
+        // Wrapping remains active in MANUAL mode so a user can toggle an
+        // individual pack off without disabling the protection layer. The mode
+        // controls the initial pack state, not whether the wrapper exists.
         return !EXPLOIT_PREVENTER_LOADED;
+    }
+
+    public boolean shouldNormalizeClientInformation() {
+        return !EXPLOIT_PREVENTER_LOADED && (settings.isNormalizeClientInformation() || strictProfileActive());
+    }
+
+    public boolean shouldBlockServerCookies() {
+        ServerProfile profile = serverProfiles.get(normalizeAddress(currentServer));
+        return settings.isBlockServerCookies()
+                || (profile != null && (profile.mode() == ServerProfile.Mode.STRICT
+                || profile.mode() == ServerProfile.Mode.MAXIMUM_PRIVACY
+                || (profile.mode() == ServerProfile.Mode.CUSTOM && profile.blockServerCookies())));
+    }
+
+    public boolean shouldBlockServerTransfers() {
+        ServerProfile profile = serverProfiles.get(normalizeAddress(currentServer));
+        return settings.isBlockServerTransfers()
+                || (profile != null && (profile.mode() == ServerProfile.Mode.STRICT
+                || profile.mode() == ServerProfile.Mode.MAXIMUM_PRIVACY
+                || (profile.mode() == ServerProfile.Mode.CUSTOM && profile.blockServerTransfers())));
     }
 
     /** The consent overlay prompt should show for an incoming push. */

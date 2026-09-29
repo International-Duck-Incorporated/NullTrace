@@ -1,224 +1,121 @@
 # NullTrace Roadmap
 
-NullTrace is a Minecraft client privacy layer focused on client identity protection, fingerprint detection, tracking defenses, resource-pack protection, and user-visible connection warnings.
+NullTrace is a client-side Minecraft privacy layer focused on client identity protection, fingerprint detection, tracking defenses, resource-pack protection, and user-visible connection warnings.
 
-## Phase 0 - Foundation
+This document describes the current GitLab repository, not the historical GitHub Actions plan.
 
-- Complete the NullTrace to NullTrace rebrand.
-- Rename Java packages to `net.nulltrace`.
-- Rename resource namespaces to `nulltrace`.
-- Set the Fabric mod ID to `nulltrace`.
-- Replace old project URLs, commands, assets, and metadata.
-- Preserve required upstream attribution and GPLv3 licensing.
-- Clean the README and project documentation.
+## Current release targets
 
-## Phase 1 - Build and Release Infrastructure
-
-Supported Minecraft targets:
-
-- 26.2
-- 26.3
-
-Toolchain:
-
-- Java 25
+- Minecraft 1.21.11
+- Minecraft 26.1
+- Minecraft 26.2
+- Minecraft 26.3
+- Java 21 for obfuscated targets and Java 25 for 26.x targets
 - Stonecutter multi-version builds
-- Ubuntu 24.04 GitHub Actions runners
+- GitLab CI and GitLab Releases
 
-Release behavior:
+## Implemented foundation
 
-- Every successful `main` matrix build creates its own prerelease on GitHub.
-- Nightly release tags are unique and include the Minecraft version, date, run number, and commit.
-- The moving `nightly` tag always points at the latest main commit.
-- A `v*` tag creates one stable GitHub Release containing the successful 26.2 and 26.3 artifacts.
-- The moving `stable` tag points at the current stable release commit.
-- A failed matrix entry must not prevent another successful nightly build from being released.
+- NullTrace package/resource rebrand and GPLv3 attribution
+- Client brand normalization and mod-channel filtering
+- Known-pack, translation, keybind, resource-pack, shader, telemetry, cookie, and transfer protections
+- Per-hop local/private-address checks for resource-pack redirects
+- Safe redirect-limit handling: no raw socket is opened for the rejected next hop
+- Configurable client-information normalization
+- Proxy selection is wired to `Minecraft#getProxy`; disabling it explicitly uses `Proxy.NO_PROXY`
+- Encrypted-at-rest account tokens using AES-GCM and owner-only key-file permissions where supported
+- Token-redacting account export
+- Central `ConnectionContext`, `PrivacyPolicy`, `PrivacyDecision`, `AuditLedger`, and server-profile model
+- `/nulltrace audit` and `/nulltrace profile`
+- Pre-connection privacy warning with Cancel / Connect Anyway
+- GitLab CI build, test, adversarial-fixture, JAR inspection, and checksum stages
 
-## Phase 2 - Privacy Core
+## Privacy architecture
 
-Build a central connection model:
+All new protections should feed the following model rather than inventing another local counter:
 
 ```text
 ConnectionContext
 ├── server address
-├── resolved addresses
 ├── protocol version
 ├── installed mods
 ├── exposed channels
 ├── exposed packs
 ├── exposed translations
-├── client brand
+├── resource-pack requests
 ├── detected probes
-└── risk state
+└── current exposure
+          ↓
+     PrivacyPolicy
+          ↓
+ ALLOW / BLOCK / WARN / LOG
+          ↓
+      AuditLedger
 ```
 
-Build a central policy engine with `ALLOW`, `WARN`, `BLOCK`, and `LOG` outcomes.
+Every decision should include a surface, subject, action, and human-readable reason.
 
-## Phase 3 - Fingerprint Surface Engine
+## Next engineering work
 
-Track potentially observable client properties:
+### Adversarial integration server
 
-- Client brand
-- Plugin/custom channels
-- Known packs
-- Translation keys
-- Keybind registrations
-- Resource-pack behavior
-- Shader overrides
-- Component resolution
-- Protocol behavior
-- Timing-sensitive behavior
+The repository contains a deterministic probe fixture under `tests/`. The next step is running it against a real headless Minecraft client in CI. The required probe matrix is:
 
-Every observation should be attributable to a specific detection rule.
+- Brand
+- Custom channel
+- Known pack
+- Translation
+- Keybind
+- Resource pack
+- Redirect/SSRF
+- Component
+- Cookie/transfer
+- Combined fingerprint
 
-## Phase 4 - Connection Warning
-
-Before connecting to a server, audit the current client state and display a warning when meaningful fingerprint exposure is detected.
-
-Example flow:
+The regression contract is:
 
 ```text
-Join Server
-    |
-    v
-NullTrace Audit
-    |
-    +-- Installed detectable clients
-    +-- Exposed channels
-    +-- Exposed packs
-    +-- Translation surfaces
-    +-- Other fingerprint signals
-    |
-    v
-Privacy Warning
-    |
-    +-- Cancel
-    +-- Connect Anyway
+Without NullTrace -> probe succeeds
+With NullTrace    -> probe is blocked, normalized, or explicitly reported
 ```
 
-The warning should show the server, affected components, risk level, blocked probes, and remaining exposure.
+### Policy and profiles
 
-## Phase 5 - Protection Improvements
+- Add server-profile editing by hostname before first connection.
+- Allow custom per-surface overrides and selected channel exceptions.
+- Persist connection audit history and offer a redacted JSON export.
+- Show profile provenance and the rule that caused every decision.
 
-Strengthen the inherited protections:
+### Supply-chain hardening
 
-- Vanilla client identity profile
-- Fabric identity profile
-- Channel filtering
-- Known-pack filtering
-- Translation-probe protection
-- Resource-pack sandboxing
-- Private/local address protection
-- Redirect validation
-- Shader override protection
-- Cache isolation
-- Telemetry protection
+- Pin and verify dependency metadata.
+- Add license allow/deny checks for generated JARs.
+- Publish signed checksums when signing credentials are available.
+- Compare generated JAR contents against an allowlisted package/resource manifest.
+- Run the adversarial Minecraft integration job on protected GitLab runners.
 
-## Phase 6 - Detection Intelligence
+### Compatibility
 
-Correlate multiple weak signals into a single audit result.
+- Keep every mixin version-gated and compile all four targets on every change.
+- Prefer capability-specific profile overrides to all-or-nothing compatibility exceptions.
+- Add a regression test for every newly discovered fingerprint vector.
 
-Detection areas:
-
-- Translation probes
-- Channel probes
-- Known-pack probes
-- Resource-pack probes
-- Component probes
-- Protocol anomalies
-- Repeated probing
-
-## Phase 7 - Server Profiles
-
-Per-server policies should support:
-
-- Standard
-- Strict
-- Maximum Privacy
-- Custom
-
-Policies should control channels, packs, fingerprint warnings, compatibility exceptions, and audit behavior independently.
-
-## Phase 8 - Audit and Transparency
-
-Provide a user-readable audit interface and `/nulltrace audit` command.
-
-Example:
+## Release pipeline
 
 ```text
-NULLTRACE AUDIT
-
-Server: example.com
-
-Client Brand          BLOCKED
-Channels              12 blocked / 2 allowed
-Known Packs           4 blocked
-Translation Probes    8 blocked
-Resource Requests     1 blocked
-Local Requests        0
-Shader Overrides      3 stripped
-
-Current exposure: 2 surfaces
-Risk: MEDIUM
+build matrix
+   ↓
+unit / policy tests
+   ↓
+adversarial fixture tests
+   ↓
+dependency + license checks
+   ↓
+JAR inspection
+   ↓
+SHA-256 checksums
+   ↓
+GitLab Release assets
 ```
 
-Include persistent logs, server history, exportable reports, and reasons for every protection decision.
-
-## Phase 9 - Adversarial Test Server
-
-Maintain a dedicated test environment that exercises every supported fingerprint surface:
-
-```text
-NullTrace Test Server
-├── brand probe
-├── channel probe
-├── translation probe
-├── keybind probe
-├── known-pack probe
-├── resource-pack probe
-├── redirect probe
-├── component probe
-└── combined fingerprint test
-```
-
-Every newly discovered fingerprint vector should become a regression test.
-
-## Phase 10 - Compatibility
-
-Replace broad all-or-nothing exceptions with capability-based compatibility rules.
-
-Example:
-
-```text
-Mod X
-├── network channel -> ALLOW
-├── translation keys -> BLOCK
-├── known packs -> BLOCK
-└── shader overrides -> BLOCK
-```
-
-## Phase 11 - Supply Chain and Security
-
-- Reproducible builds where practical
-- SHA-256 release checksums
-- Release signing where practical
-- Dependency auditing
-- License checks
-- Generated JAR inspection
-- CI checks for unexpected network behavior
-- No NullTrace telemetry
-
-## Phase 12 - 1.0 Milestone
-
-NullTrace 1.0 should contain:
-
-- Complete rebrand
-- 26.2 support
-- 26.3 support
-- Working nightly releases
-- Working stable releases
-- Central detection and policy engine
-- Connection warning system
-- Fingerprint audit
-- Migrated NullTrace protections
-- Regression test suite
+Stable releases are created from `v*` tags. Main-branch artifacts remain CI artifacts until the project’s GitLab release policy promotes them.
