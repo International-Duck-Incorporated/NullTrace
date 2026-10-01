@@ -25,6 +25,7 @@ import java.net.URL;
 import net.nulltrace.mod.privacy.PrivacyAction;
 import net.nulltrace.mod.privacy.PrivacyAudit;
 import net.nulltrace.mod.privacy.PrivacySurface;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
@@ -68,10 +69,16 @@ public class HttpUtilMixin {
             @Local(argsOnly = true) Map<String, String> requestProperties,
             @Local LocalRef<HttpURLConnection> httpURLConnection) throws IOException {
 
+        // The request map supplied by Minecraft is sometimes Map.of(...), so it
+        // must be treated as read-only. Build a mutable, sanitized copy for any
+        // redirect hops instead of removing entries from the caller's map.
+        Map<String, String> sanitizedRequestProperties =
+                nulltrace$withoutIdentityHeaders(requestProperties);
+
         // Resource-pack hosts/CDNs do not need the player's account identity.
-        // Remove the two directly identifying headers before the first request and
-        // from the mutable redirect-header map so they cannot be restored on hops.
-        nulltrace$scrubIdentityHeaders(instance, requestProperties);
+        // The initial connection may already contain the original properties,
+        // so replace identifying values before getInputStream opens the request.
+        nulltrace$scrubIdentityHeaders(instance);
 
         if (!NullTraceConfig.getInstance().shouldBlockLocalPackUrls()) return original.call(instance);
 
@@ -177,8 +184,8 @@ public class HttpUtilMixin {
             }
 
             instance.setInstanceFollowRedirects(false);
-            requestProperties.forEach(instance::setRequestProperty);
-            nulltrace$scrubIdentityHeaders(instance, requestProperties);
+            sanitizedRequestProperties.forEach(instance::setRequestProperty);
+            nulltrace$scrubIdentityHeaders(instance);
 
             status = instance.getResponseCode();
             redirects++;
@@ -188,12 +195,23 @@ public class HttpUtilMixin {
         return original.call(instance);
     }
 
-    private static void nulltrace$scrubIdentityHeaders(
-            HttpURLConnection connection, Map<String, String> requestProperties) {
-        requestProperties.remove("X-Minecraft-Username");
-        requestProperties.remove("X-Minecraft-UUID");
-        requestProperties.remove("x-minecraft-username");
-        requestProperties.remove("x-minecraft-uuid");
+    private static Map<String, String> nulltrace$withoutIdentityHeaders(
+            Map<String, String> requestProperties) {
+        Map<String, String> sanitized = new LinkedHashMap<>();
+        requestProperties.forEach((name, value) -> {
+            if (!nulltrace$isIdentityHeader(name)) {
+                sanitized.put(name, value);
+            }
+        });
+        return sanitized;
+    }
+
+    private static boolean nulltrace$isIdentityHeader(String name) {
+        return name != null && (name.equalsIgnoreCase("X-Minecraft-Username")
+                || name.equalsIgnoreCase("X-Minecraft-UUID"));
+    }
+
+    private static void nulltrace$scrubIdentityHeaders(HttpURLConnection connection) {
         // HttpURLConnection may already have copied the map into its request
         // properties; replacing with an empty value is safer than leaving the
         // original value attached on redirect-created connections.
