@@ -11,6 +11,8 @@ All notable changes to NullTrace are documented here.
 - Added configurable client-information normalization for language, view distance, chat visibility, and particles.
 - Added an adversarial probe fixture and policy regression tests.
 - Added CI dependency reporting, JAR inspection, SHA-256 checksum generation, and checksum release assets.
+- Added CurseForge update checks through the public CFWidget metadata API, alongside GitLab, with compatible stable Fabric release selection and independent source failure handling.
+- Added regression tests for release metadata, Minecraft-version filtering, and semantic version comparison.
 
 ### Security
 - Removed the redirect-limit raw `Socket` side effect; rejected redirect hops are now checked and never opened.
@@ -18,7 +20,11 @@ All notable changes to NullTrace are documented here.
 - Routed account HTTP requests through the same explicit Minecraft proxy setting as gameplay.
 
 ### Changed
-- Updated the roadmap, README, and release pipeline to describe the GitLab repository and all four supported targets.
+- Updated the roadmap and release pipeline to describe the GitLab repository and all four supported targets.
+- Rewrote the README with official CurseForge and GitLab downloads, current configuration behavior, build/test instructions, and update-check network disclosure.
+
+### Fixed
+- Prevented older published releases from triggering update notifications or marking the configuration version label as outdated.
 
 ## [2.0.2] - 2026-09-26
 

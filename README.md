@@ -1,382 +1,218 @@
 <p align="center">
-  <img src="docs/assets/nulltrace-logo.png" alt="NullTrace" width="15%">
+  <img src="docs/assets/nulltrace-logo.png" alt="NullTrace" width="120">
 </p>
 
 <h1 align="center">NullTrace</h1>
 
 <p align="center">
-  A client-side Minecraft privacy and fingerprinting protection mod for Fabric.
+  Client-side Minecraft privacy and fingerprinting protection for Fabric.
 </p>
 
 <p align="center">
+  <a href="https://www.curseforge.com/minecraft/mc-mods/nulltrace"><img alt="CurseForge" src="https://img.shields.io/badge/CurseForge-Download-F16436?logo=curseforge&logoColor=white"></a>
   <a href="https://gitlab.com/international-duck-incorporated/NullTrace/-/releases"><img alt="GitLab Releases" src="https://img.shields.io/badge/GitLab-Releases-FC6D26?logo=gitlab&logoColor=white"></a>
-  <a href="https://gitlab.com/international-duck-incorporated/NullTrace/blob/main/LICENSE"><img alt="License" src="https://img.shields.io/badge/License-GPL--3.0-blue.svg"></a>
+  <a href="LICENSE"><img alt="License: GPL-3.0-only" src="https://img.shields.io/badge/License-GPL--3.0--only-blue"></a>
 </p>
 
+NullTrace gives you control over information your Minecraft client exposes to servers. It reduces common mod fingerprints, limits tracking through server resource packs, and makes privacy decisions inspectable.
+
+NullTrace is a fork of [OpSec](https://github.com/aurickk/OpSec) by [aurickk](https://github.com/aurickk), developed independently with its own branding, protections, and multi-version builds.
+
 > [!IMPORTANT]
-> NullTrace is currently distributed **through GitLab**.
+> **Official downloads are available on [CurseForge](https://www.curseforge.com/minecraft/mc-mods/nulltrace) and [GitLab Releases](https://gitlab.com/international-duck-incorporated/NullTrace/-/releases).**
 >
-> Official downloads are available from the [GitLab Releases](https://gitlab.com/international-duck-incorporated/NullTrace/releases) page and the repository itself.
->
-> Any NullTrace JAR found elsewhere should be treated as unofficial.
+> Source code, issues, and development remain on GitLab. Treat JARs from other sites, unsolicited messages, or unofficial mirrors as untrusted.
 
-## About NullTrace
+## What NullTrace protects
 
-NullTrace is a **fork of [OpSec](https://github.com/aurickk/OpSec)** by [aurickk](https://github.com/aurickk).
+| Surface | Protection |
+| --- | --- |
+| Client identity | Optionally report a vanilla client brand and filter mod/client-identification payloads, including ViaVersion and ViaFabricPlus identity details |
+| Mod networking | Control which mods may expose custom channels and mod-injected known-pack identifiers |
+| Translation and keybind probes | Prevent untrusted server components from resolving protected mod keys; optionally report default vanilla keybinds |
+| Client information | Configure normalization of language, view distance, chat visibility, and particle settings |
+| Resource-pack tracking | Isolate server-pack caches by account and remove username/UUID identity headers from pack requests |
+| Resource-pack destinations | Block requests and redirects to local/private network addresses |
+| Server-pack content | Control whether server packs are applied and strip shader overrides targeting protected mods |
+| Cookies and transfers | Block server cookies and unwanted server-directed transfers |
+| Chat and telemetry | Choose chat-signing behavior and block Minecraft telemetry to Mojang |
+| Privacy diagnostics | Inspect connection decisions, alerts, and per-server profiles |
+| Accounts | Switch stored Minecraft sessions without restarting; encrypt session and refresh tokens at rest |
 
-The project started from OpSec's client-side privacy and anti-fingerprinting work and has since been developed under the NullTrace name, with its own codebase, package structure, branding, version support, and additional protections.
+### Limits and trade-offs
 
-The purpose of NullTrace is to reduce the amount of client-side information that Minecraft servers can use to identify, fingerprint, or track a modded client.
+NullTrace **does not make you anonymous or completely undetectable**. It does not hide your IP address, account identity, gameplay behavior, or every protocol-level difference. It is a privacy tool, not an anti-cheat bypass.
 
-NullTrace does not make you anonymous. It does not hide your IP address, server-side activity, or every possible fingerprinting technique. It is specifically focused on reducing common client-side fingerprinting and tracking surfaces.
+Some servers and mods require custom channels, signed chat, resource packs, cookies, or transfers. Blocking those features can break functionality or prevent a connection. Allowing them restores functionality at the cost of exposing the corresponding information. Use the whitelist and per-server profiles deliberately rather than assuming one setting is right for every server.
 
-## Features
+## Download and install
 
-| Area                     | Protection                                                                                            |
-| ------------------------ | ----------------------------------------------------------------------------------------------------- |
-| Client brand             | Optionally report a vanilla-like client brand instead of a Fabric brand                               |
-| Network channels         | Conditionally filter mod channels registered with the server                                          |
-| Known packs              | Filter mod-injected known-pack identifiers                                                            |
-| Key resolution           | Protect against translation/keybind probing used to identify installed mods                           |
-| Resource packs           | Isolate server-pack caches per account                                                                |
-| Resource-pack URLs       | Block requests and redirects targeting local/private addresses                                        |
-| Server pack requirements | Allow required packs to remain downloaded while giving the user control over whether they are applied |
-| Mod shaders              | Strip server-pack shader overrides targeting installed, non-whitelisted mods                          |
-| Chat signing             | Configure message-signing behavior independently of vanilla defaults                                  |
-| Telemetry                | Block Minecraft telemetry sent to Mojang                                                              |
-| Accounts                 | Switch between stored Minecraft sessions without restarting the client                                |
-| Diagnostics              | Optional alerts, toast notifications, logging, and a debug command                                    |
+Choose a JAR matching **both your Minecraft version and Fabric**:
 
-## Protection Model
+- **[CurseForge files](https://www.curseforge.com/minecraft/mc-mods/nulltrace/files/all)** — official hosted releases; also available through the CurseForge app.
+- **[GitLab Releases](https://gitlab.com/international-duck-incorporated/NullTrace/-/releases)** — official release assets and release notes. The current tag pipeline also publishes SHA-256 checksum files.
 
-NullTrace focuses on client-side information that a server can query or influence.
+Release availability can differ between the two sites. Check the file's supported Minecraft versions before installing; a newer mod version built for another Minecraft version is not a compatible update.
 
-### Client Brand Spoofing
+### Manual installation
 
-Servers can inspect the client brand reported during connection. With **Spoof as Vanilla** enabled, NullTrace reports a vanilla-like brand and applies the corresponding protection rules for mod-exposed data.
+1. Install [Fabric Loader](https://fabricmc.net/use/) for your Minecraft version.
+2. Install the matching [Fabric API](https://www.curseforge.com/minecraft/mc-mods/fabric-api).
+3. Download the matching NullTrace JAR from one of the official sources above.
+4. Put the JAR in your Minecraft instance's `mods` directory (`.minecraft/mods` for a standard installation). Remove older NullTrace JARs so only one copy is installed.
+5. Start Minecraft and open **NullTrace** from the multiplayer screen.
 
-When the whitelist is active in **AUTO** or **CUSTOM** mode, vanilla spoofing is disabled because explicitly allowing mod functionality means those mods may need to identify themselves.
+[Mod Menu](https://www.curseforge.com/minecraft/mc-mods/modmenu) is optional and provides another configuration entry point. For the CurseForge app, use a Fabric profile for the correct Minecraft version and add NullTrace and Fabric API to that profile.
 
-### Channel Spoofing
+### Supported build targets
 
-Fabric mods can register custom network channels. A server can inspect those channels to determine which mods are present.
+The current `main` branch maintains these targets:
 
-NullTrace can filter non-whitelisted mod channels before they are exposed to the server.
+| Target | Minecraft versions | Java | Fabric Loader used to build | Fabric API used to build |
+| --- | --- | --- | --- | --- |
+| `1.21.11` | 1.21.11 | 21 | 0.19.3 | 0.140.2+1.21.11 |
+| `26.1` | 26.1–26.1.2 | 25 | 0.19.3 | 0.146.1+26.1.2 |
+| `26.2` | 26.2 | 25 | 0.19.5 | 0.160.0+26.2 |
+| `26.3` | 26.3 | 25 | 0.19.5 | 0.160.5+26.3 |
 
-* **BLOCK ALL** - block all mod content
-* **AUTO** - automatically allow mods that register network channels
-* **CUSTOM** - manually choose which installed mods are allowed
+The `26.1` target builds against 26.1.2 and declares `>=26.1 <26.2`. Older Minecraft targets are not part of the current `versions/` tree. Use the dependencies appropriate to your installed Minecraft version, and consult the release notes for compatibility changes.
 
-### Known-Pack Filtering
-
-Some mods expose pack identifiers through Minecraft's known-pack protocol. NullTrace filters mod-injected entries that are not permitted by the current whitelist.
-
-Vanilla entries are retained.
-
-### Key Resolution Protection
-
-A server can send translatable components containing keys such as `key.attack` or mod-specific translation keys. The resolved result can reveal installed mods or configured keybinds.
-
-NullTrace intercepts this resolution path and prevents untrusted server packets from using those keys as a mod fingerprint.
-
-With **Fake Default Keybinds** enabled, vanilla keybinds resolve to their default values instead of the user's actual bindings.
-
-### Resource-Pack Cache Isolation
-
-Server resource packs are normally cached in a shared download location. A server can use pack behavior to associate otherwise separate Minecraft accounts or client instances.
-
-NullTrace can place downloaded server packs into account-specific cache directories.
-
-### Local URL Protection
-
-A malicious resource-pack URL can redirect a Minecraft client toward local or private network addresses.
-
-NullTrace checks resource-pack destinations and blocks requests that resolve to local/private addresses.
-
-### Server Pack Control
-
-Required server resource packs can normally be applied without giving the player a normal toggle in the resource-pack screen.
-
-NullTrace keeps the pack available while allowing the player to control whether its content is actually applied.
-
-Modes:
-
-| Mode          | Behavior                                                                                   |
-| ------------- | ------------------------------------------------------------------------------------------ |
-| **MANUAL**    | Vanilla behavior on push; the user can later remove or re-enable the pack                  |
-| **ASK**       | Required packs are stripped initially and a confirmation overlay asks whether to load them |
-| **ALWAYS ON** | Server packs are stripped initially and can only be enabled manually                       |
-
-The server pack language resources remain available so simple translation-key checks cannot rely solely on whether the full visual pack is currently active.
-
-### Mod Shader Override Stripping
-
-A server resource pack can contain files under another mod's asset namespace. For mods such as Meteor Client, that can replace bundled shaders or other client resources.
-
-NullTrace removes shader overrides targeting installed, non-whitelisted mods while leaving the rest of the server pack intact.
-
-Vanilla assets are not stripped.
-
-### Chat Signing
-
-NullTrace provides three signing modes:
-
-| Mode     | Behavior                              |
-| -------- | ------------------------------------- |
-| **OFF**  | Remove chat signatures                |
-| **AUTO** | Sign only when required               |
-| **ON**   | Use normal Minecraft signing behavior |
-
-### Telemetry
-
-When enabled, NullTrace blocks Minecraft telemetry requests to Mojang. This does not change normal gameplay networking.
+NullTrace declares conflicts with [ExploitPreventer](https://github.com/NikOverflow/ExploitPreventer), Ichor, LabyMod, and AutismsexDefender. Check [`fabric.mod.json`](src/main/resources/fabric.mod.json) before combining it with other client protection frameworks.
 
 ## Configuration
 
-Open the **NullTrace** button in the multiplayer screen or open the configuration through [Mod Menu](https://modrinth.com/mod/modmenu).
+Open the **NullTrace** button on the multiplayer screen, or use Mod Menu. Some changes require reconnecting before every protection takes effect.
 
-<img alt="NullTrace configuration screen" src="docs/assets/screenshots/config-protection.png" width="100%">
+<img alt="NullTrace protection settings" src="docs/assets/screenshots/config-protection.png" width="100%">
 
-Changes made while connected to a server may require reconnecting before every protection is active. Use `/nulltrace audit` to inspect blocked surfaces, allowed surfaces, reasons, and remaining exposure. `/nulltrace profile` shows the current server profile; `/nulltrace profile STRICT` or `/nulltrace profile MAXIMUM_PRIVACY` strengthens protections for that server.
+### Client identity and whitelist
 
-### Protection
+**Spoof as Vanilla** reports a vanilla client brand and blocks mod payloads. Turning it on switches the whitelist to its block-all state. Using **AUTO** or **CUSTOM** instead allows selected mod functionality and disables vanilla-brand spoofing.
 
-| Setting                            | Purpose                                                                    |
-| ---------------------------------- | -------------------------------------------------------------------------- |
-| **Spoof as Vanilla**               | Enable vanilla-style client identity and strict filtering                  |
-| **Isolate Pack Cache**             | Separate server-pack caches by account                                     |
-| **Block Local Pack URLs**          | Prevent local/private resource-pack destinations                           |
-| **Bypass Server Pack Requirement** | Configure MANUAL, ASK, or ALWAYS ON behavior                               |
-| **Strip Mod Shader Overrides**     | Remove server shader overrides for protected mods                          |
-| **Clear Cache**                    | Delete cached server resource packs                                        |
-| **Key Resolution Spoofing**        | Enable key-resolution protection                                           |
-| **Fake Default Keybinds**          | Return default vanilla keybind values                                      |
-| **Meteor Fix**                     | Disable Meteor's conflicting key-resolution mixin when Meteor is installed |
-| **Signing Mode**                   | Configure chat signing                                                     |
-| **Disable Telemetry**              | Block Mojang telemetry                                                     |
-| **Normalize Client Information**    | Choose which language, view-distance, chat, and particle values are normalized |
-| **Server Privacy Profile**          | Use STANDARD, STRICT, MAXIMUM_PRIVACY, or CUSTOM per server               |
+- **Block all / vanilla spoofing:** block mod content rather than exposing selected channels.
+- **AUTO:** automatically allow mods that register network channels.
+- **CUSTOM:** choose which installed mods are allowed.
 
-### Whitelist
+Whitelisting is useful for features such as voice chat that intentionally communicate with the server. Allowed mods may identify themselves; a vanilla-looking brand alone is not an anonymity guarantee.
 
-| Setting            | Purpose                               |
-| ------------------ | ------------------------------------- |
-| **Whitelist Mode** | BLOCK ALL, AUTO, or CUSTOM            |
-| **Installed Mods** | Select individual mods in CUSTOM mode |
+### Resource packs
 
-Whitelisting is necessary for mods that intentionally communicate with servers. Examples include voice-chat or map-related functionality.
+Account-specific caches and local URL blocking reduce tracking and malicious pack requests. Shader stripping removes server-pack shader overrides for installed, non-whitelisted mods, while leaving vanilla assets alone.
 
-<img alt="NullTrace whitelist settings in CUSTOM mode" src="docs/assets/screenshots/config-whitelist-custom.png" width="100%">
+**Bypass Server Pack Requirement** controls the initial application of server-pack content:
 
-The three whitelist modes:
+| Mode | Behavior |
+| --- | --- |
+| **MANUAL** | Apply packs normally on push; you can later disable or re-enable them in the resource-pack screen |
+| **ASK** | Strip visual/audio content initially, then ask whether to load it |
+| **ALWAYS ON** | Strip visual/audio content initially without a prompt; you can still enable it manually |
 
-| BLOCK ALL | AUTO | CUSTOM |
-| --------- | ---- | ------ |
-| <img alt="Whitelist mode BLOCK ALL" src="docs/assets/screenshots/config-whitelist-blockall.png"> | <img alt="Whitelist mode AUTO" src="docs/assets/screenshots/config-whitelist-auto.png"> | <img alt="Whitelist mode CUSTOM" src="docs/assets/screenshots/config-whitelist-custom.png"> |
-| Every mod is blocked | Mods that register network channels are allowed automatically | Each installed mod is toggled individually |
+Language resources remain loaded when a pack's visual/audio content is stripped, so simple translation checks cannot depend solely on whether the full pack is active. This does not prevent every possible resource-pack fingerprint.
 
-### Diagnostics
+### Signing, network settings, and diagnostics
 
-| Setting            | Purpose                                            |
-| ------------------ | -------------------------------------------------- |
-| **Show Alerts**    | Show tracking detections in chat                   |
-| **Show Toasts**    | Show popup notifications                           |
-| **Log Detections** | Write detections to the game log                   |
-| **Debug Alerts**   | Report all probed keys, including unchanged values |
-| **Debug Command**  | Enable `/nulltrace`                                |
-
-<img alt="NullTrace diagnostics and debug settings" src="docs/assets/screenshots/config-misc.png" width="100%">
+- **SIGN:** retain normal Minecraft chat signing.
+- **OFF:** remove chat signatures; servers enforcing signed chat may reject messages.
+- **Disable Telemetry:** block Minecraft telemetry to Mojang, not ordinary gameplay traffic or the release checks described below.
+- **Normalize Client Information:** control normalization of language, view distance, chat visibility, and particles independently.
+- **Block Server Cookies / Block Server Transfers:** prevent those server-driven interactions; some proxy networks rely on them.
+- **Server Privacy Profile:** use `STANDARD`, `STRICT`, `MAXIMUM_PRIVACY`, or `CUSTOM` per server.
+- **Show Alerts / Show Toasts / Log Detections:** choose how tracking detections are reported. Detailed registry commands require **Miscellaneous → Debug Command**.
 
 ### Accounts
 
-The built-in account manager supports session-based login, account switching, token validation, import/export, and optional offline accounts. Session and refresh tokens are encrypted at rest with AES-GCM in a separate local vault; account exports intentionally omit bearer tokens and require re-authentication on the destination installation.
+The account manager supports session-based login, switching, token validation, import/export, and optional offline accounts. Session and refresh tokens are stored in a separate AES-GCM-encrypted local vault. Exports omit bearer tokens and require re-authentication on the destination installation.
 
-Treat Minecraft session tokens as credentials. Never paste them into issues, screenshots, Discord messages, or other public locations.
+Treat session tokens as credentials. Never paste them into issues, screenshots, chats, or other public locations. Local encryption does not protect against an attacker who controls your running client or can access both the vault and its key.
 
-<img alt="NullTrace account manager" src="docs/assets/screenshots/config-accounts.png" width="100%">
+<details>
+<summary>More configuration screenshots</summary>
+
+<img alt="Whitelist: block all" src="docs/assets/screenshots/config-whitelist-blockall.png" width="100%">
+<img alt="Whitelist: AUTO" src="docs/assets/screenshots/config-whitelist-auto.png" width="100%">
+<img alt="Whitelist: CUSTOM" src="docs/assets/screenshots/config-whitelist-custom.png" width="100%">
+<img alt="Diagnostics and debug settings" src="docs/assets/screenshots/config-misc.png" width="100%">
+<img alt="Account manager" src="docs/assets/screenshots/config-accounts.png" width="100%">
+
+</details>
 
 ## Commands
 
-`/nulltrace audit` and `/nulltrace profile` are always available so privacy remains inspectable. The detailed registry commands remain behind **Miscellaneous -> Debug Command**.
+`/nulltrace audit` and `/nulltrace profile` are available without enabling debug commands.
 
-| Command                              | Description                                                          |
-| ------------------------------------ | -------------------------------------------------------------------- |
-| `/nulltrace audit`                   | Show blocked/allowed surfaces, reasons, and remaining exposure       |
-| `/nulltrace profile`                 | Show the current server profile                                      |
-| `/nulltrace profile STRICT`          | Strengthen protections for the current server                        |
-| `/nulltrace info`                    | Show tracked mod information                                         |
-| `/nulltrace info <mod>`              | Inspect channels, keys, known packs, shaders, and other tracked data |
-| `/nulltrace channels`                | List tracked network channels and whitelist status                   |
+| Command | Description |
+| --- | --- |
+| `/nulltrace audit` | Show blocked/allowed surfaces, decision reasons, and remaining exposure |
+| `/nulltrace profile` | Show the current server profile |
+| `/nulltrace profile STRICT` | Apply the strict profile to the current server |
+| `/nulltrace profile MAXIMUM_PRIVACY` | Apply the maximum-privacy profile to the current server |
+| `/nulltrace info` | Show tracked mod information; requires Debug Command |
+| `/nulltrace info <mod>` | Inspect tracked channels, keys, known packs, and shaders; requires Debug Command |
+| `/nulltrace channels` | List tracked channels and whitelist status; requires Debug Command |
 
-## Detections
+## Update and integrity checks
 
-When diagnostics are enabled, common alerts include:
+At startup, the in-game updater checks **CurseForge and GitLab in parallel**, once per client session. It selects the newest compatible stable release and prefers CurseForge when both sources report the same version. An older published version never triggers a downgrade prompt, and failure of one service does not prevent the other from reporting an update.
 
-* **Key Resolution Exploit Detected** - a server is probing translation or keybind resolution
-* **Resource Pack Fingerprinting Detected** - a suspicious resource-pack destination was detected
-* **Local URL Scan Detected** - a resource-pack request targeted a local/private address
+CurseForge metadata comes from the public **[CFWidget API](https://cfwidget.com/)** for project `1712126`. CFWidget is a third-party metadata service, **not a download mirror**. The mod does not embed a CurseForge API key. CurseForge candidates must be tagged as stable Fabric releases for the running Minecraft version, and their JAR names must also match that version or an explicit supported range. GitLab candidates must include a compatible JAR asset.
 
-## Compatibility
+The notification's **Download** button opens the selected official CurseForge file page or GitLab release page in your browser; it does not replace your installed JAR automatically. **Skip This Version** suppresses that version persistently, while dismissing the prompt suppresses it for the session.
 
-### Current Minecraft Targets
+The separate integrity checker compares the installed JAR against available **GitLab SHA-256 release assets**. It skips verification when no matching release/checksum exists; this is not proof that an unverified JAR is safe, nor a separate CurseForge integrity check.
 
-The current `main` branch is maintained for:
+**Network disclosure:** release checks contact `api.cfwidget.com` and `gitlab.com`; the integrity checker may also request a linked checksum asset. These services see the network source address and a `NullTrace-Mod/<version>` user agent. The updater does not add account tokens, usernames, UUIDs, or server addresses to its requests. These checks use their own Java HTTP client; the **Play through proxy** setting currently applies to gameplay/account connections, not these checks.
 
-| Minecraft    | Covers          | Java | Fabric Loader | Fabric API     |
-| ------------ | --------------- | ---- | ------------- | -------------- |
-| **1.21.11**  | 1.21.11         | 21   | 0.19.3        | 0.140.2+1.21.11 |
-| **26.1**     | 26.1 – 26.1.2   | 25   | 0.19.3        | 0.146.1+26.1.2 |
-| **26.2**     | 26.2            | 25   | 0.19.5        | 0.160.0+26.2   |
-| **26.3**     | 26.3            | 25   | 0.19.5        | 0.160.5+26.3   |
+## Build and test
 
-The `26.1` target is built against 26.1.2 and declares `>=26.1 <26.2`, so a single JAR
-covers the whole 26.1 line. Targets older than 1.21.11 are not part of the current
-`versions/` tree on `main`.
-
-### Mod Compatibility
-
-NullTrace currently declares conflicts with:
-
-* [ExploitPreventer](https://github.com/NikOverflow/ExploitPreventer)
-* Ichor
-* LabyMod
-* AutismsexDefender
-
-Check the repository metadata and release notes before combining NullTrace with other client modification frameworks.
-
-## Installation
-
-NullTrace is maintained and released on **GitLab**.
-
-### Download
-
-Go to the [GitLab Releases](https://gitlab.com/international-duck-incorporated/NullTrace/releases) page and download the JAR matching your Minecraft version.
-
-The `main` branch currently produces GitLab CI artifacts for Minecraft 1.21.11, 26.1, 26.2 and 26.3. Version tags publish release assets and SHA-256 checksum files.
-
-### Manual Installation
-
-1. Install [Fabric Loader](https://fabricmc.net/use/) for your Minecraft version.
-2. Install the matching [Fabric API](https://github.com/FabricMC/fabric-api).
-3. Download the matching NullTrace JAR from [GitLab Releases](https://gitlab.com/international-duck-incorporated/NullTrace/releases).
-4. Put the JAR in your `.minecraft/mods` directory.
-5. Start Minecraft.
-
-[Mod Menu](https://modrinth.com/mod/modmenu) is optional but provides a convenient configuration entry point.
-
-## Building
-
-NullTrace uses [Fabric Loom](https://github.com/FabricMC/fabric-loom) and [Stonecutter](https://stonecutter.kikugie.dev/) for multi-version builds.
+NullTrace uses [Fabric Loom](https://github.com/FabricMC/fabric-loom) and [Stonecutter](https://stonecutter.kikugie.dev/) with a shared source tree and version-specific Gradle projects.
 
 ### Requirements
 
-* Java 25 for the 26.1, 26.2 and 26.3 targets; Java 21 or newer for 1.21.11
-  (a Java 25 JDK can build every target, since 1.21.11 is compiled with `--release 21`)
-* Git
-* No system Gradle installation is required; the repository includes the Gradle wrapper
-
-### Clone
+- Git.
+- A Java 25 JDK to build all targets. The 1.21.11 target compiles with `--release 21`.
+- No system Gradle installation is needed; use the included wrapper.
+- Python 3 for the dependency-free adversarial fixture tests.
 
 ```bash
 git clone https://gitlab.com/international-duck-incorporated/NullTrace.git
 cd NullTrace
-```
 
-### Build A Single Minecraft Version
+# Build one target: 1.21.11, 26.1, 26.2, or 26.3
+./gradlew :26.3:build
 
-Replace `<version>` with `1.21.11`, `26.1`, `26.2` or `26.3`.
-
-Linux/macOS:
-
-```bash
-./gradlew :<version>:build
-```
-
-Windows:
-
-```powershell
-.\gradlew.bat :<version>:build
-```
-
-For example, `./gradlew :26.3:build`.
-
-### Build Every Version
-
-Linux/macOS:
-
-```bash
+# Build every supported target
 ./gradlew buildAll
+
+# Run policy and update-metadata regression tests
+./gradlew :26.3:test
+
+# Run adversarial fixture tests
+python -m unittest discover -s tests -p 'test_*.py' -v
 ```
 
-Windows:
+On Windows, replace `./gradlew` with `.\gradlew.bat`. Generated JARs are under `versions/<target>/build/libs/`; use the final non-source, non-dev JAR.
 
-```powershell
-.\gradlew.bat buildAll
-```
+### Releases and contributions
 
-Generated JARs are written below:
+GitLab CI builds all four targets and runs tests and security checks. Tags matching `vX.Y.Z` publish GitLab release assets and SHA-256 checksums. CurseForge hosts official releases separately; the in-game CurseForge update check does **not** upload files or change the CI publishing workflow. Development builds on `main` remain CI artifacts until released.
 
-```text
-versions/<minecraft-version>/build/libs/
-```
+Report reproducible bugs and compatibility issues in the [GitLab issue tracker](https://gitlab.com/international-duck-incorporated/NullTrace/-/issues). Include Minecraft, Fabric Loader, Fabric API, and NullTrace versions, relevant settings, and reproduction steps. Remove tokens and personal information from logs.
 
-## Development
-
-NullTrace uses a shared source tree with version-specific Stonecutter projects under `versions/`.
-
-The current repository layout is broadly:
-
-```text
-NullTrace/
-├── .gitlab-ci.yml           # GitLab build, test, security, and release pipeline
-├── docs/assets/             # Project artwork
-│   └── screenshots/         # In-game UI screenshots used by this README
-├── src/main/                # Shared/common code
-├── src/client/              # Client-only code and mixins
-├── versions/
-│   ├── 1.21.11/
-│   ├── 26.1/
-│   ├── 26.2/
-│   └── 26.3/
-├── build.gradle
-├── gradle.properties
-├── stonecutter.gradle
-└── settings.gradle.kts
-```
-
-When changing Minecraft-specific code, test the affected version target rather than assuming the mappings and client internals are identical.
-
-## Issues and Contributions
-
-Use the [issue tracker](https://gitlab.com/international-duck-incorporated/NullTrace/issues) for bug reports, reproducible compatibility problems, and feature requests.
-
-Pull requests should:
-
-* Keep version-specific changes isolated where possible.
-* Avoid introducing server-side dependencies for a client-only feature.
-* Preserve the existing GPL-3.0-only licensing.
-* Include testing information for the Minecraft version(s) affected.
+Merge requests should preserve the `GPL-3.0-only` license, keep version-specific changes isolated, avoid server-side dependencies for client-only features, and include tests for affected targets. See [the roadmap](docs/ROADMAP.md), [the changelog](CHANGELOG.md), and [the adversarial fixture notes](tests/README.md) for development context.
 
 ## Credits
 
-NullTrace is a fork of [OpSec](https://github.com/aurickk/OpSec) by [aurickk](https://github.com/aurickk).
+NullTrace retains attribution to [OpSec](https://github.com/aurickk/OpSec) and [aurickk](https://github.com/aurickk). Additional implementations and research are based on or informed by:
 
-The project retains attribution to the original project while continuing development independently under the NullTrace name.
-
-Additional implementations and research are based on or informed by:
-
-* [ExploitPreventer](https://github.com/NikOverflow/ExploitPreventer) - local URL blocking and key-resolution protection concepts
-* [LiquidBounce](https://github.com/CCBlueX/LiquidBounce/blob/nextgen/src/main/java/net/ccbluex/liquidbounce/injection/mixins/minecraft/util/MixinDownloadQueue.java) - resource-pack cache isolation
-* [Meteor Client](https://github.com/MeteorDevelopment/meteor-client) - account/session handling and compatibility fixes
-* [No Chat Reports](https://modrinth.com/mod/no-chat-reports) - chat-signing and telemetry-related functionality
-* [No Prying Eyes](https://github.com/Daxanius/NoPryingEyes) - secure-chat enforcement research
-* [MixinSquared](https://github.com/Bawnorton/MixinSquared) - mixin cancellation used by the Meteor compatibility fix
-* [Fabric API](https://github.com/FabricMC/fabric-api) - Fabric client and networking integration
-* [Stonecutter](https://stonecutter.kikugie.dev/) - multi-version project management
+- [ExploitPreventer](https://github.com/NikOverflow/ExploitPreventer) — local URL blocking and key-resolution protection concepts.
+- [LiquidBounce](https://github.com/CCBlueX/LiquidBounce/blob/nextgen/src/main/java/net/ccbluex/liquidbounce/injection/mixins/minecraft/util/MixinDownloadQueue.java) — resource-pack cache isolation.
+- [Meteor Client](https://github.com/MeteorDevelopment/meteor-client) — account/session handling and compatibility fixes.
+- [No Chat Reports](https://modrinth.com/mod/no-chat-reports) — signing and telemetry-related functionality.
+- [No Prying Eyes](https://github.com/Daxanius/NoPryingEyes) — secure-chat enforcement research.
+- [MixinSquared](https://github.com/Bawnorton/MixinSquared) — mixin cancellation for Meteor compatibility.
+- [Fabric API](https://github.com/FabricMC/fabric-api) — client and networking integration.
+- [Stonecutter](https://stonecutter.kikugie.dev/) — multi-version project management.
 
 ## License
 
-NullTrace is licensed under the [GNU General Public License v3.0](https://www.gnu.org/licenses/gpl-3.0.html).
-
-See [LICENSE](LICENSE) for the complete license text.
-
+NullTrace is licensed under **GPL-3.0-only**. See [LICENSE](LICENSE) for the full license text.

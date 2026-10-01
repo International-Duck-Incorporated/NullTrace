@@ -192,8 +192,7 @@ public class NullTraceConfigScreen extends Screen {
 
         // Version label in bottom-left corner, vertically centered in the 36px footer
         String currentVersion = "v" + UpdateChecker.getCurrentVersion();
-        this.versionOutdated = UpdateChecker.getLatestVersion() != null
-                && !UpdateChecker.getLatestVersion().equals(UpdateChecker.getCurrentVersion());
+        this.versionOutdated = UpdateChecker.isOutdated();
         String color = versionOutdated ? "\u00A7c" : "\u00A7a";
         // Brand the footer tag: dimmed mod name followed by the status-coloured version.
         String versionPlain = "NullTrace " + currentVersion;

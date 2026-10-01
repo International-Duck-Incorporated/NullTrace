@@ -1,8 +1,9 @@
 package net.nulltrace.mod.config;
 
+import net.fabricmc.loader.api.FabricLoader;
 import net.nulltrace.mod.NullTrace;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
+import net.nulltrace.mod.update.UpdateMetadata;
+import net.nulltrace.mod.update.UpdateMetadata.Release;
 
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -10,126 +11,129 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Function;
 
 /**
- * Async update checker that queries the GitLab releases API to detect new versions.
- * All state fields are volatile for cross-thread visibility since the check runs
- * on a background thread and results are read on the render thread.
+ * Async update checker for CurseForge and GitLab. Each source can fail independently;
+ * a single immutable result is published once both checks have finished.
  */
 public final class UpdateChecker {
-
-    private static final String RELEASES_URL = "https://gitlab.com/api/v4/projects/international-duck-incorporated%2FNullTrace/releases/permalink/latest";
-    private static final String FALLBACK_RELEASE_URL = "https://gitlab.com/international-duck-incorporated/NullTrace/-/releases";
+    // The official CurseForge API needs a private key. CFWidget provides public
+    // CurseForge metadata without shipping credentials in the client JAR.
+    private static final String CURSEFORGE_API_URL = "https://api.cfwidget.com/" + UpdateMetadata.CURSEFORGE_PROJECT_ID;
+    private static final String GITLAB_API_URL = "https://gitlab.com/api/v4/projects/international-duck-incorporated%2FNullTrace/releases/permalink/latest";
+    private static final String FALLBACK_RELEASE_URL = UpdateMetadata.CURSEFORGE_PROJECT_URL + "/files/all";
 
     private static final HttpClient HTTP_CLIENT = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(10))
             .followRedirects(HttpClient.Redirect.NORMAL)
             .build();
 
-    private static volatile String latestVersion = null;
-    private static volatile String releaseUrl = null;
-    private static volatile boolean updateAvailable = false;
-    private static volatile boolean checkComplete = false;
+    private static final AtomicBoolean CHECK_STARTED = new AtomicBoolean();
+    private static volatile CheckResult result = new CheckResult(null, false, false);
     private static volatile boolean shownThisSession = false;
 
-    private UpdateChecker() {
-        // Utility class
+    private record CheckResult(Release release, boolean updateAvailable, boolean complete) {}
+
+    private UpdateChecker() {}
+
+    /** Checks both feeds in parallel, once per client session, without blocking the render thread. */
+    public static void checkForUpdate() {
+        if (!CHECK_STARTED.compareAndSet(false, true)) return;
+        String currentVersion = NullTrace.getVersion();
+        String minecraftVersion = FabricLoader.getInstance()
+                .getModContainer("minecraft")
+                .map(mod -> mod.getMetadata().getVersion().getFriendlyString())
+                .orElse(null);
+        if (minecraftVersion == null) {
+            NullTrace.LOGGER.debug("[NullTrace] Could not determine Minecraft version, skipping update check");
+            result = new CheckResult(null, false, true);
+            return;
+        }
+
+        CompletableFuture<Release> curseForge = fetchRelease("CurseForge (CFWidget)", CURSEFORGE_API_URL,
+                currentVersion, body -> UpdateMetadata.fromCurseForge(body, minecraftVersion));
+        CompletableFuture<Release> gitLab = fetchRelease("GitLab", GITLAB_API_URL,
+                currentVersion, body -> UpdateMetadata.fromGitLab(body, minecraftVersion));
+
+        // Prefer CurseForge on a tie, but do not hide a newer GitLab-only release.
+        curseForge.thenCombine(gitLab, UpdateMetadata::newest).whenComplete((release, error) -> {
+            boolean available = error == null && release != null
+                    && UpdateMetadata.isNewerVersion(release.version(), currentVersion);
+            result = new CheckResult(error == null ? release : null, available, true);
+            if (error != null) {
+                NullTrace.LOGGER.debug("[NullTrace] Update check failed: {}", error.getMessage());
+            } else if (available) {
+                NullTrace.LOGGER.info("[NullTrace] Update available: {} -> {} ({})",
+                        currentVersion, release.version(), release.url());
+            } else if (release != null) {
+                NullTrace.LOGGER.debug("[NullTrace] No newer compatible release found (installed: {}, published: {})",
+                        currentVersion, release.version());
+            } else {
+                NullTrace.LOGGER.debug("[NullTrace] No compatible release metadata found for Minecraft {}", minecraftVersion);
+            }
+        });
     }
 
-    /**
-     * Fires an async HTTP GET to the GitLab releases API to check for updates.
-     * Non-blocking: runs on a daemon thread via CompletableFuture.
-     */
-    public static void checkForUpdate() {
-        CompletableFuture.runAsync(() -> {
+    private static CompletableFuture<Release> fetchRelease(String source, String url, String currentVersion,
+                                                           Function<String, Release> parse) {
+        return CompletableFuture.supplyAsync(() -> {
             try {
-                String currentVersion = NullTrace.getVersion();
                 HttpRequest request = HttpRequest.newBuilder()
-                        .uri(URI.create(RELEASES_URL))
+                        .uri(URI.create(url))
                         .header("User-Agent", "NullTrace-Mod/" + currentVersion)
                         .header("Accept", "application/json")
                         .timeout(Duration.ofSeconds(10))
                         .GET()
                         .build();
-
                 HttpResponse<String> response = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
-
-                if (response.statusCode() == 200) {
-                    JsonObject json = JsonParser.parseString(response.body()).getAsJsonObject();
-
-                    String tagName = json.has("tag_name") ? json.get("tag_name").getAsString() : null;
-                    String htmlUrl = json.has("_links") && json.getAsJsonObject("_links").has("web")
-                            ? json.getAsJsonObject("_links").get("web").getAsString() : null;
-
-                    if (tagName != null) {
-                        // Strip leading "v" or "V" if present (e.g., "V1.0.5" -> "1.0.5")
-                        String version = (tagName.startsWith("v") || tagName.startsWith("V")) ? tagName.substring(1) : tagName;
-                        latestVersion = version;
-                        releaseUrl = htmlUrl != null ? htmlUrl : FALLBACK_RELEASE_URL;
-
-                        // Any difference means user should update
-                        if (!version.equals(currentVersion)) {
-                            updateAvailable = true;
-                            NullTrace.LOGGER.info("[NullTrace] Update available: {} -> {} ({})", currentVersion, version, releaseUrl);
-                        } else {
-                            NullTrace.LOGGER.debug("[NullTrace] Mod is up to date ({})", currentVersion);
-                        }
-                    }
-                } else {
-                    NullTrace.LOGGER.debug("[NullTrace] GitLab API returned status {}", response.statusCode());
-                }
+                if (response.statusCode() == 200) return parse.apply(response.body());
+                NullTrace.LOGGER.debug("[NullTrace] {} API returned status {}", source, response.statusCode());
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                NullTrace.LOGGER.debug("[NullTrace] {} update check interrupted", source);
             } catch (Exception e) {
-                NullTrace.LOGGER.debug("[NullTrace] Update check failed: {}", e.getMessage());
-            } finally {
-                checkComplete = true;
+                NullTrace.LOGGER.debug("[NullTrace] {} update check failed: {}", source, e.getMessage());
             }
+            return null;
         });
     }
 
-    /**
-     * Returns true if an update is available, the check is complete, the
-     * update screen has not been shown this session, and the user hasn't
-     * skipped this specific version.
-     */
+    /** Notification eligibility, including per-session dismissal and persistent version skipping. */
     public static boolean isUpdateAvailable() {
-        return checkComplete && updateAvailable && !shownThisSession
-                && !NullTraceConfig.getInstance().getSettings().isVersionSkipped(latestVersion);
+        CheckResult snapshot = result;
+        return snapshot.complete() && snapshot.updateAvailable() && !shownThisSession
+                && !NullTraceConfig.getInstance().getSettings().isVersionSkipped(snapshot.release().version());
     }
 
-    /**
-     * Returns the latest version string from GitLab, or null if not yet checked.
-     */
+    /** Actual version status, independent of whether the user dismissed the notification. */
+    public static boolean isOutdated() {
+        CheckResult snapshot = result;
+        return snapshot.complete() && snapshot.updateAvailable();
+    }
+
+    /** Latest compatible stable mod version from either source, or null if unavailable. */
     public static String getLatestVersion() {
-        return latestVersion;
+        Release release = result.release();
+        return release != null ? release.version() : null;
     }
 
-    /**
-     * Returns the URL to the latest release page on GitLab.
-     * Falls back to the generic latest release URL if not available.
-     */
+    /** Opens the selected CurseForge file or GitLab release page, never an automatic download. */
     public static String getReleaseUrl() {
-        return releaseUrl != null ? releaseUrl : FALLBACK_RELEASE_URL;
+        Release release = result.release();
+        return release != null ? release.url() : FALLBACK_RELEASE_URL;
     }
 
-    /**
-     * Marks the update notification as shown for this session.
-     * Prevents the screen from appearing again even if user navigates back to title screen.
-     */
     public static void markShown() {
         shownThisSession = true;
     }
 
-    /**
-     * Resets the session-shown flag so the update screen can appear again.
-     * Called when the user resets all settings from the config screen.
-     */
+    /** Called when the user resets all settings from the configuration screen. */
     public static void resetShown() {
         shownThisSession = false;
     }
 
-    /**
-     * Returns the current mod version. Delegates to {@link NullTrace#getVersion()}.
-     */
     public static String getCurrentVersion() {
         return NullTrace.getVersion();
     }
