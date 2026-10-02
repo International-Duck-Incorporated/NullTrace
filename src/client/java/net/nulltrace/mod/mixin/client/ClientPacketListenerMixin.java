@@ -8,7 +8,6 @@ import net.nulltrace.mod.config.NullTraceConfig;
 import net.nulltrace.mod.detection.PacketContext;
 import net.nulltrace.mod.protection.PackStripHandler;
 import net.nulltrace.mod.protection.PackStripOverlay;
-import net.nulltrace.mod.protection.TranslationProtectionHandler;
 import net.nulltrace.mod.privacy.PrivacyAudit;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientPacketListener;
@@ -93,9 +92,18 @@ public abstract class ClientPacketListenerMixin {
     )
     private <T extends PacketListener> void nulltrace$wrapBundleSubPacketHandle(
             Packet<T> instance, T listener, Operation<Void> original) {
-        TranslationProtectionHandler.clearDedup();
-        PacketContext.setPacketName(instance);
-        original.call(instance, listener);
+        Object previousPacket = PacketContext.getCurrentPacket();
+        String previousPacketName = PacketContext.getRawPacketName();
+        boolean previousProcessing = PacketContext.isProcessingPacket();
+        PacketContext.setCurrentPacket(instance);
+        PacketContext.setProcessingPacket(true);
+        try {
+            original.call(instance, listener);
+        } finally {
+            PacketContext.setProcessingPacket(previousProcessing);
+            PacketContext.setCurrentPacket(previousPacket);
+            PacketContext.setRawPacketName(previousPacketName);
+        }
     }
 
     @Inject(method = "handleLogin", at = @At("TAIL"))

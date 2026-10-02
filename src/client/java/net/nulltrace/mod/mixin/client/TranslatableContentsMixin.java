@@ -5,6 +5,7 @@ import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import net.nulltrace.mod.NullTrace;
 import net.nulltrace.mod.config.NullTraceConfig;
 import net.nulltrace.mod.config.SpoofSettings;
+import net.nulltrace.mod.detection.PacketContext;
 import net.nulltrace.mod.protection.NullTraceFromPacketAccess;
 import net.nulltrace.mod.protection.TranslationProtectionHandler;
 import net.nulltrace.mod.protection.TranslationProtectionHandler.InterceptionType;
@@ -49,14 +50,28 @@ public abstract class TranslatableContentsMixin implements NullTraceFromPacketAc
     @Unique
     private boolean nulltrace$silent = false;
 
+    @Unique
+    private String nulltrace$packetName = null;
+
     @Override
     public void nulltrace$setFromPacket() {
         this.nulltrace$fromPacket = true;
+        PacketContext.registerDecodedComponent(this);
     }
 
     @Override
     public void nulltrace$setSilent() {
         this.nulltrace$silent = true;
+    }
+
+    @Override
+    public void nulltrace$setPacketName(String packetName) {
+        this.nulltrace$packetName = packetName;
+    }
+
+    @Override
+    public String nulltrace$getPacketName() {
+        return this.nulltrace$packetName;
     }
 
     /** Sentinel value indicating the original call should proceed. */
@@ -128,9 +143,14 @@ public abstract class TranslatableContentsMixin implements NullTraceFromPacketAc
         if (!config.isTranslationProtectionEnabled()) {
             PrivacyAudit.record(PrivacySurface.TRANSLATION_PROBE, translationKey,
                     PrivacyAction.ALLOW, "Translation protection is disabled");
-            String realValue = nulltrace$getRealTranslation(translationKey, defaultValue);
-            TranslationProtectionHandler.sendDetailDebug(InterceptionType.TRANSLATION, translationKey, realValue, realValue);
-            TranslationProtectionHandler.logDetection(InterceptionType.TRANSLATION, translationKey, realValue, realValue);
+            if (!nulltrace$silent && !nulltrace$reported) {
+                nulltrace$reported = true;
+                String realValue = nulltrace$getRealTranslation(translationKey, defaultValue);
+                nulltrace$withComponentPacketContext(() -> {
+                    TranslationProtectionHandler.sendDetailDebug(InterceptionType.TRANSLATION, translationKey, realValue, realValue);
+                    TranslationProtectionHandler.logDetection(InterceptionType.TRANSLATION, translationKey, realValue, realValue);
+                });
+            }
             return NULLTRACE_ALLOW_ORIGINAL;
         }
 
@@ -168,18 +188,20 @@ public abstract class TranslatableContentsMixin implements NullTraceFromPacketAc
      */
     @Unique
     private void nulltrace$logBlocked(String translationKey, String defaultValue) {
-        PrivacyAudit.record(PrivacySurface.TRANSLATION_PROBE, translationKey,
-                PrivacyAction.BLOCK, "Non-vanilla translation lookup normalized");
         if (nulltrace$silent || nulltrace$reported) return;
         nulltrace$reported = true;
+        PrivacyAudit.record(PrivacySurface.TRANSLATION_PROBE, translationKey,
+                PrivacyAction.BLOCK, "Non-vanilla translation lookup normalized");
         String originalValue = nulltrace$getRealTranslation(translationKey, defaultValue);
 
-        if (!originalValue.equals(defaultValue)) {
-            TranslationProtectionHandler.sendDetail(InterceptionType.TRANSLATION, translationKey, originalValue, defaultValue);
-        } else {
-            TranslationProtectionHandler.sendDetailDebug(InterceptionType.TRANSLATION, translationKey, originalValue, defaultValue);
-        }
-        TranslationProtectionHandler.logDetection(InterceptionType.TRANSLATION, translationKey, originalValue, defaultValue);
+        nulltrace$withComponentPacketContext(() -> {
+            if (!originalValue.equals(defaultValue)) {
+                TranslationProtectionHandler.sendDetail(InterceptionType.TRANSLATION, translationKey, originalValue, defaultValue);
+            } else {
+                TranslationProtectionHandler.sendDetailDebug(InterceptionType.TRANSLATION, translationKey, originalValue, defaultValue);
+            }
+            TranslationProtectionHandler.logDetection(InterceptionType.TRANSLATION, translationKey, originalValue, defaultValue);
+        });
     }
 
     /** Pack-defined value when present (independent of storage merge order), else {@code defaultValue}. */
@@ -189,13 +211,30 @@ public abstract class TranslatableContentsMixin implements NullTraceFromPacketAc
         return packValue != null ? packValue : defaultValue;
     }
 
-    /** Report a vanilla/whitelisted passthrough — chat detail in debug mode, console log when enabled. Both handlers self-gate. */
+    /** Report a vanilla/whitelisted passthrough in debug mode only (normal gameplay should not log every vanilla key). */
     @Unique
     private void nulltrace$reportPassthrough(String translationKey, String defaultValue) {
-        if (!NullTraceConfig.getInstance().isDebugAlerts() && !NullTraceConfig.getInstance().isLogDetections()) return;
+        if (nulltrace$silent || nulltrace$reported) return;
+        if (!NullTraceConfig.getInstance().isDebugAlerts()) return;
+        nulltrace$reported = true;
         String realValue = nulltrace$getRealTranslation(translationKey, defaultValue);
-        TranslationProtectionHandler.sendDetailDebug(InterceptionType.TRANSLATION, translationKey, realValue, realValue);
-        TranslationProtectionHandler.logDetection(InterceptionType.TRANSLATION, translationKey, realValue, realValue);
+        nulltrace$withComponentPacketContext(() -> {
+            TranslationProtectionHandler.sendDetailDebug(InterceptionType.TRANSLATION, translationKey, realValue, realValue);
+            TranslationProtectionHandler.logDetection(InterceptionType.TRANSLATION, translationKey, realValue, realValue);
+        });
+    }
+
+    @Unique
+    private void nulltrace$withComponentPacketContext(Runnable action) {
+        String previous = PacketContext.getRawPacketName();
+        if (this.nulltrace$packetName != null) {
+            PacketContext.setRawPacketName(this.nulltrace$packetName);
+        }
+        try {
+            action.run();
+        } finally {
+            PacketContext.setRawPacketName(previous);
+        }
     }
 
     /**

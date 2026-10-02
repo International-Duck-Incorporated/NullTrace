@@ -4,7 +4,6 @@ package net.nulltrace.mod.mixin.client;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import net.nulltrace.mod.detection.PacketContext;
-import net.nulltrace.mod.protection.TranslationProtectionHandler;
 import net.minecraft.network.PacketListener;
 import net.minecraft.network.protocol.Packet;
 import org.spongepowered.asm.mixin.Mixin;
@@ -20,13 +19,17 @@ public class PacketProcessorMixin {
     )
     private <T extends PacketListener> void nulltrace$wrapHandle(Packet<?> instance, T listener,
             Operation<Void> original) {
-        TranslationProtectionHandler.clearDedup();
-        PacketContext.setPacketName(instance);
+        Object previousPacket = PacketContext.getCurrentPacket();
+        String previousPacketName = PacketContext.getRawPacketName();
+        boolean previousProcessing = PacketContext.isProcessingPacket();
+        PacketContext.setCurrentPacket(instance);
         PacketContext.setProcessingPacket(true);
         try {
             original.call(instance, listener);
         } finally {
-            PacketContext.setProcessingPacket(false);
+            PacketContext.setProcessingPacket(previousProcessing);
+            PacketContext.setCurrentPacket(previousPacket);
+            PacketContext.setRawPacketName(previousPacketName);
         }
     }
 }

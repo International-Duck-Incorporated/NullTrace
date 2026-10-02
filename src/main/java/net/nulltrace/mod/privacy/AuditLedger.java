@@ -1,6 +1,7 @@
 package net.nulltrace.mod.privacy;
 
-import java.util.ArrayList;
+import java.util.ArrayDeque;
+import java.util.Deque;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
@@ -9,7 +10,7 @@ import java.util.Map;
 public final class AuditLedger {
     private static final int MAX_EVENTS = 2048;
     private final Object lock = new Object();
-    private final List<PrivacyDecision> events = new ArrayList<>();
+    private final Deque<PrivacyDecision> events = new ArrayDeque<>();
     private ConnectionContext context = ConnectionContext.builder().build();
 
     public void begin(ConnectionContext context) {
@@ -22,8 +23,8 @@ public final class AuditLedger {
     public void record(PrivacyDecision decision) {
         if (decision == null) return;
         synchronized (lock) {
-            if (events.size() >= MAX_EVENTS) events.remove(0);
-            events.add(decision);
+            if (events.size() >= MAX_EVENTS) events.pollFirst();
+            events.addLast(decision);
         }
     }
 

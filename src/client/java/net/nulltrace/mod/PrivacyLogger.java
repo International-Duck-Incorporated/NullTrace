@@ -221,7 +221,7 @@ public class PrivacyLogger {
     
     public static void logDetection(String category, String details) {
         if (!NullTraceConfig.getInstance().isLogDetections()) return;
-        NullTrace.LOGGER.info("[Detection:{}] {}", category, details);
+        NullTrace.logInfoAsync("[Detection:{}] {}", category, details);
     }
     
     /**

@@ -5,6 +5,7 @@ import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import net.nulltrace.mod.NullTrace;
 import net.nulltrace.mod.config.NullTraceConfig;
 import net.nulltrace.mod.config.SpoofSettings;
+import net.nulltrace.mod.detection.PacketContext;
 import net.nulltrace.mod.protection.NullTraceFromPacketAccess;
 import net.nulltrace.mod.protection.TranslationProtectionHandler;
 import net.nulltrace.mod.protection.TranslationProtectionHandler.InterceptionType;
@@ -57,9 +58,23 @@ public class KeybindContentsMixin implements NullTraceFromPacketAccess {
     @Unique
     private boolean nulltrace$reported = false;
 
+    @Unique
+    private String nulltrace$packetName = null;
+
     @Override
     public void nulltrace$setFromPacket() {
         this.nulltrace$fromPacket = true;
+        PacketContext.registerDecodedComponent(this);
+    }
+
+    @Override
+    public void nulltrace$setPacketName(String packetName) {
+        this.nulltrace$packetName = packetName;
+    }
+
+    @Override
+    public String nulltrace$getPacketName() {
+        return this.nulltrace$packetName;
     }
 
     /**
@@ -85,10 +100,13 @@ public class KeybindContentsMixin implements NullTraceFromPacketAccess {
         SpoofSettings settings = config.getSettings();
 
         if (ModRegistry.isWhitelistedKeybind(name)) {
-            if (NullTraceConfig.getInstance().isDebugAlerts() || NullTraceConfig.getInstance().isLogDetections()) {
+            if (!nulltrace$reported && NullTraceConfig.getInstance().isDebugAlerts()) {
+                nulltrace$reported = true;
                 String displayValue = nulltrace$readKeybindDisplay();
-                TranslationProtectionHandler.sendDetailDebug(InterceptionType.KEYBIND, name, displayValue, displayValue);
-                TranslationProtectionHandler.logDetection(InterceptionType.KEYBIND, name, displayValue, displayValue);
+                nulltrace$withComponentPacketContext(() -> {
+                    TranslationProtectionHandler.sendDetailDebug(InterceptionType.KEYBIND, name, displayValue, displayValue);
+                    TranslationProtectionHandler.logDetection(InterceptionType.KEYBIND, name, displayValue, displayValue);
+                });
             }
             return original.call(supplier);
         }
@@ -96,10 +114,15 @@ public class KeybindContentsMixin implements NullTraceFromPacketAccess {
         // Protection disabled — passthrough with logging
         if (!config.isTranslationProtectionEnabled()) {
             Object originalResult = original.call(supplier);
-            String originalValue = originalResult instanceof Component c ? c.getString()
-                : originalResult != null ? originalResult.toString() : name;
-            TranslationProtectionHandler.sendDetailDebug(InterceptionType.KEYBIND, name, originalValue, originalValue);
-            TranslationProtectionHandler.logDetection(InterceptionType.KEYBIND, name, originalValue, originalValue);
+            if (!nulltrace$reported) {
+                nulltrace$reported = true;
+                String originalValue = originalResult instanceof Component c ? c.getString()
+                    : originalResult != null ? originalResult.toString() : name;
+                nulltrace$withComponentPacketContext(() -> {
+                    TranslationProtectionHandler.sendDetailDebug(InterceptionType.KEYBIND, name, originalValue, originalValue);
+                    TranslationProtectionHandler.logDetection(InterceptionType.KEYBIND, name, originalValue, originalValue);
+                });
+            }
             return originalResult;
         }
 
@@ -107,10 +130,15 @@ public class KeybindContentsMixin implements NullTraceFromPacketAccess {
         if (KeybindDefaults.hasDefault(name)) {
             if (!settings.isFakeDefaultKeybinds()) {
                 Object originalResult = original.call(supplier);
-                String originalValue = originalResult instanceof Component c ? c.getString()
-                    : originalResult != null ? originalResult.toString() : name;
-                TranslationProtectionHandler.sendDetailDebug(InterceptionType.KEYBIND, name, originalValue, originalValue);
-                TranslationProtectionHandler.logDetection(InterceptionType.KEYBIND, name, originalValue, originalValue);
+                if (!nulltrace$reported && NullTraceConfig.getInstance().isDebugAlerts()) {
+                    nulltrace$reported = true;
+                    String originalValue = originalResult instanceof Component c ? c.getString()
+                        : originalResult != null ? originalResult.toString() : name;
+                    nulltrace$withComponentPacketContext(() -> {
+                        TranslationProtectionHandler.sendDetailDebug(InterceptionType.KEYBIND, name, originalValue, originalValue);
+                        TranslationProtectionHandler.logDetection(InterceptionType.KEYBIND, name, originalValue, originalValue);
+                    });
+                }
                 return originalResult;
             }
             String spoofedValue = KeybindDefaults.getDefault(name);
@@ -133,6 +161,9 @@ public class KeybindContentsMixin implements NullTraceFromPacketAccess {
         if (replacement.getContents() instanceof NullTraceFromPacketAccess access) {
             access.nulltrace$setFromPacket();
             access.nulltrace$setSilent();
+            if (this.nulltrace$packetName != null) {
+                access.nulltrace$setPacketName(this.nulltrace$packetName);
+            }
         }
         nulltrace$cachedBlocked = replacement;
         return replacement;
@@ -147,12 +178,27 @@ public class KeybindContentsMixin implements NullTraceFromPacketAccess {
     private void nulltrace$reportBlocked(String keybindName, String realValue, String spoofedValue) {
         if (nulltrace$reported) return;
         nulltrace$reported = true;
-        if (!realValue.equals(spoofedValue)) {
-            TranslationProtectionHandler.sendDetail(InterceptionType.KEYBIND, keybindName, realValue, spoofedValue);
-        } else {
-            TranslationProtectionHandler.sendDetailDebug(InterceptionType.KEYBIND, keybindName, realValue, spoofedValue);
+        nulltrace$withComponentPacketContext(() -> {
+            if (!realValue.equals(spoofedValue)) {
+                TranslationProtectionHandler.sendDetail(InterceptionType.KEYBIND, keybindName, realValue, spoofedValue);
+            } else {
+                TranslationProtectionHandler.sendDetailDebug(InterceptionType.KEYBIND, keybindName, realValue, spoofedValue);
+            }
+            TranslationProtectionHandler.logDetection(InterceptionType.KEYBIND, keybindName, realValue, spoofedValue);
+        });
+    }
+
+    @Unique
+    private void nulltrace$withComponentPacketContext(Runnable action) {
+        String previous = PacketContext.getRawPacketName();
+        if (this.nulltrace$packetName != null) {
+            PacketContext.setRawPacketName(this.nulltrace$packetName);
         }
-        TranslationProtectionHandler.logDetection(InterceptionType.KEYBIND, keybindName, realValue, spoofedValue);
+        try {
+            action.run();
+        } finally {
+            PacketContext.setRawPacketName(previous);
+        }
     }
 
     /**

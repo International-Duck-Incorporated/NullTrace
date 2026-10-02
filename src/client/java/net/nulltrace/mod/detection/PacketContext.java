@@ -1,6 +1,10 @@
 package net.nulltrace.mod.detection;
 
 import net.minecraft.network.protocol.Packet;
+import net.nulltrace.mod.protection.NullTraceFromPacketAccess;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * ThreadLocal tracking for packet processing context.
@@ -26,8 +30,12 @@ public class PacketContext {
     private static final ThreadLocal<Boolean> DECODING_PAYLOAD =
         ThreadLocal.withInitial(() -> false);
 
-    private static final ThreadLocal<String> PACKET_NAME =
-        ThreadLocal.withInitial(() -> "unknown");
+    private static final ThreadLocal<String> PACKET_NAME = new ThreadLocal<>();
+
+    private static final ThreadLocal<Object> CURRENT_PACKET = new ThreadLocal<>();
+
+    private static final ThreadLocal<List<NullTraceFromPacketAccess>> DECODED_COMPONENTS =
+        new ThreadLocal<>();
 
     private PacketContext() {}
 
@@ -48,8 +56,95 @@ public class PacketContext {
         DECODING_PAYLOAD.set(value);
     }
 
+    /** Start tracking components decoded during a single PacketDecoder.decode() call. */
+    public static void beginPacketDecode() {
+        PROCESSING_PACKET.set(true);
+        DECODING_PAYLOAD.set(true);
+        List<NullTraceFromPacketAccess> list = DECODED_COMPONENTS.get();
+        if (list != null) {
+            list.clear();
+        }
+    }
+
+    /** Assign the resolved packet name to all components decoded during the current decode() call. */
+    public static void finishPacketDecode(Object packet) {
+        List<NullTraceFromPacketAccess> decoded = DECODED_COMPONENTS.get();
+        if (decoded != null && !decoded.isEmpty() && packet != null) {
+            String resolved = resolvePacketName(packet);
+            for (NullTraceFromPacketAccess component : decoded) {
+                if (component.nulltrace$getPacketName() == null) {
+                    component.nulltrace$setPacketName(resolved);
+                }
+            }
+            decoded.clear();
+        }
+    }
+
+    /** Clean up decode tracking state in a finally block. */
+    public static void endPacketDecode() {
+        List<NullTraceFromPacketAccess> decoded = DECODED_COMPONENTS.get();
+        if (decoded != null) {
+            decoded.clear();
+        }
+        DECODING_PAYLOAD.set(false);
+        PROCESSING_PACKET.set(false);
+    }
+
+    /** Record a packet-tagged component so it receives the packet's name once decode completes. */
+    public static void registerDecodedComponent(NullTraceFromPacketAccess component) {
+        if (component == null) return;
+        String currentName = getRawPacketName();
+        if (currentName != null) {
+            component.nulltrace$setPacketName(currentName);
+        }
+        if (DECODING_PAYLOAD.get()) {
+            List<NullTraceFromPacketAccess> decoded = DECODED_COMPONENTS.get();
+            if (decoded == null) {
+                decoded = new ArrayList<>(4);
+                DECODED_COMPONENTS.set(decoded);
+            }
+            decoded.add(component);
+        }
+    }
+
     public static String getPacketName() {
-        return PACKET_NAME.get();
+        String name = getRawPacketName();
+        return name != null ? name : "unknown";
+    }
+
+    public static String getRawPacketName() {
+        String explicit = PACKET_NAME.get();
+        if (explicit != null) {
+            return explicit;
+        }
+        Object currentPacket = CURRENT_PACKET.get();
+        if (currentPacket != null) {
+            String resolved = resolvePacketName(currentPacket);
+            PACKET_NAME.set(resolved);
+            return resolved;
+        }
+        return null;
+    }
+
+    public static void setRawPacketName(String packetName) {
+        if (packetName == null) {
+            PACKET_NAME.remove();
+        } else {
+            PACKET_NAME.set(packetName);
+        }
+    }
+
+    public static Object getCurrentPacket() {
+        return CURRENT_PACKET.get();
+    }
+
+    public static void setCurrentPacket(Object packet) {
+        PACKET_NAME.remove();
+        if (packet == null) {
+            CURRENT_PACKET.remove();
+        } else {
+            CURRENT_PACKET.set(packet);
+        }
     }
 
     /**
@@ -58,17 +153,22 @@ public class PacketContext {
      * regardless of obfuscation.
      */
     public static void setPacketName(Object packet) {
+        setCurrentPacket(packet);
+    }
+
+    public static String resolvePacketName(Object packet) {
         if (packet instanceof Packet<?> p) {
             try {
                 //? if >=1.20.5 {
-                PACKET_NAME.set(p.type().id().toString());
+                return p.type().id().toString();
                 //?} else {
                 /*// 1.20.4 and below: Packet doesn't have type() — fall back to class name
-                PACKET_NAME.set(p.getClass().getSimpleName());
+                return p.getClass().getSimpleName();
                 *///?}
             } catch (Exception e) {
-                PACKET_NAME.set("unknown");
+                return "unknown";
             }
         }
+        return "unknown";
     }
 }

@@ -18,13 +18,13 @@ public class PacketDecoderMixin {
             target = "Lnet/minecraft/network/codec/StreamCodec;decode(Ljava/lang/Object;)Ljava/lang/Object;")
     )
     private Object nulltrace$wrapDecode(StreamCodec instance, Object buffer, Operation<Object> original) {
-        PacketContext.setProcessingPacket(true);
-        PacketContext.setDecodingPayload(true);
+        PacketContext.beginPacketDecode();
         try {
-            return original.call(instance, buffer);
+            Object packet = original.call(instance, buffer);
+            PacketContext.finishPacketDecode(packet);
+            return packet;
         } finally {
-            PacketContext.setDecodingPayload(false);
-            PacketContext.setProcessingPacket(false);
+            PacketContext.endPacketDecode();
         }
     }
 }
