@@ -119,9 +119,19 @@ Language resources remain loaded when a pack's visual/audio content is stripped,
 - **Server Privacy Profile:** use `STANDARD`, `STRICT`, `MAXIMUM_PRIVACY`, or `CUSTOM` per server.
 - **Show Alerts / Show Toasts / Log Detections:** choose how tracking detections are reported. Detailed registry commands require **Miscellaneous → Debug Command**.
 
+### Advanced: proxies and network checks
+
+The **Advanced** tab carries the settings that are not about a single protection:
+
+- **Proxy mode** — **Direct** (no proxy), **Launcher** (use the proxy the Minecraft launcher is configured with), or **Selected** (use one entry from your list). Configurations written by older versions migrate automatically: the previous "play through proxy" on/off value becomes **Launcher** or **Direct**.
+- **Manage proxies…** — paste an endpoint (`host:port`, with a scheme such as `socks5://` accepted) and keep a list: select the active entry, reorder, remove, and probe the selected endpoint to see whether it actually answers before you rely on it.
+- **Network** — **Check for Updates** and **Verify JAR Integrity** can each be switched off. The integrity check is skipped automatically for non-release builds.
+
+Be clear about what this hides and what it does not. The proxy setting covers NullTrace's own HTTP traffic (release checks, integrity checksum lookup, account/session requests) — the same surface the vanilla launcher proxy covers. **The connection to a game server is not routed through it**, so a server still sees your real IP address; proxying gameplay requires Netty handlers in the connect path and remains on the roadmap (`docs/design/proxy-management.md`). Use SOCKS5 if you are heading that way, since HTTP proxies generally cannot tunnel a game connection.
+
 ### Accounts
 
-The account manager supports session-based login, switching, token validation, import/export, and optional offline accounts. Session and refresh tokens are stored in a separate AES-GCM-encrypted local vault. Exports omit bearer tokens and require re-authentication on the destination installation.
+The account manager supports session-based login, switching, token validation, and import/export. Only authenticated Microsoft accounts are supported — NullTrace cannot create an offline ("cracked") identity, and an account entry of that kind left over from an older version is dropped when the configuration loads. Session and refresh tokens are stored in a separate AES-GCM-encrypted local vault. Exports omit bearer tokens and require re-authentication on the destination installation.
 
 Treat session tokens as credentials. Never paste them into issues, screenshots, chats, or other public locations. Local encryption does not protect against an attacker who controls your running client or can access both the vault and its key.
 
@@ -160,7 +170,7 @@ The notification's **Download** button opens the selected official CurseForge fi
 
 The separate integrity checker compares the installed JAR against available **GitLab SHA-256 release assets**. It skips verification when no matching release/checksum exists; this is not proof that an unverified JAR is safe, nor a separate CurseForge integrity check.
 
-**Network disclosure:** release checks contact `api.cfwidget.com` and `gitlab.com`; the integrity checker may also request a linked checksum asset. These services see the network source address and a `NullTrace-Mod/<version>` user agent. The updater does not add account tokens, usernames, UUIDs, or server addresses to its requests. These checks use their own Java HTTP client; the **Play through proxy** setting currently applies to gameplay/account connections, not these checks.
+**Network disclosure:** release checks contact `api.cfwidget.com` and `gitlab.com`; the integrity checker may also request a linked checksum asset. These services see the network source address and a `NullTrace-Mod/<version>` user agent. The updater does not add account tokens, usernames, UUIDs, or server addresses to its requests. Both checks use the same HTTP client as the rest of NullTrace, so they follow the proxy mode chosen in **Advanced → Network**, and both can be switched off there (**Check for Updates**, **Verify JAR Integrity**) — with them disabled, nothing is requested from either service at all. They are auxiliary HTTP requests only: the connection to a game server is not affected by the proxy setting.
 
 ## Build and test
 

@@ -4,6 +4,8 @@ All notable changes to NullTrace are documented here.
 
 ## [Unreleased]
 
+## [2.1.0] - 2026-10-17
+
 ### Added
 - Added unit tests for the warning decision (`WarningAssessment`), the per-server policy profiles, the audit ledger and the local-address guard, plus a standalone proxy harness (54 expectations) that runs in CI. The previous "adversarial fixture" asserted only that a hardcoded list of probe names was stable and never executed NullTrace code.
 - Added proxy management on a new **Advanced** config tab: paste an endpoint, keep a list, select the active one, reorder or remove entries, and probe the selected endpoint for reachability (`docs/design/proxy-management.md`).
@@ -28,7 +30,8 @@ All notable changes to NullTrace are documented here.
 - The jar-integrity screen no longer claims the client may be "compromised". It reports packaging drift in plain language ("this jar is not the official release build"), explains what that usually means, and is skipped automatically for non-release versions.
 - The pre-connection warning's decision logic moved into a Minecraft-free class so it is covered by unit tests rather than only reachable from a running client.
 - Replaced the "Play through proxy" boolean with a tri-state proxy mode (`Direct` / `Launcher` / `Selected`). Configurations written by older versions migrate automatically (`true` → `Launcher`), and the proxy list lives outside `SpoofSettings` so Reset cannot delete saved endpoints.
-- Updated the roadmap and release pipeline to describe the GitLab repository and all four supported targets.
+- Updated the roadmap and release pipeline to describe the GitLab repository and all four supported targets; the roadmap's warning-screen and proxy entries now match the shipped behaviour.
+- The README documents the **Advanced** tab (proxy modes, endpoint list and tester, update/integrity toggles) and states explicitly what the proxy does not cover: the game-server connection. The line claiming the update checks bypass the proxy, and the offer of offline accounts, are both gone.
 - Rewrote the README with official CurseForge and GitLab downloads, current configuration behavior, build/test instructions, and update-check network disclosure.
 - The pre-connection warning now derives its rows from the effective per-server `PrivacyPolicy` instead of raw counters, so the screen can no longer disagree with what the protections actually do.
 
@@ -43,6 +46,7 @@ All notable changes to NullTrace are documented here.
 - The pre-connection warning no longer claims installed mods are "potentially identifiable" when it only counted installed mods, and no longer presents reassuring numbers ("0 exposed", "remaining exposure: 0") in the same voice as actual exposure.
 - The pre-connection warning resolves its strings through the private `NullTraceLang` table, so the other bundled locales are used and server resource packs cannot rewrite the text.
 - Escape on the pre-connection warning now returns to the server list instead of dropping the player on an unrelated screen.
+- Updated the project version metadata to 2.1.0.
 
 ## [2.0.2] - 2026-09-26
 

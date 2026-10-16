@@ -22,13 +22,14 @@ This document describes the current GitLab repository, not the historical GitHub
 - Per-hop local/private-address checks for resource-pack redirects
 - Safe redirect-limit handling: no raw socket is opened for the rejected next hop
 - Configurable client-information normalization
-- Proxy selection is wired to `Minecraft#getProxy`; disabling it explicitly uses `Proxy.NO_PROXY`
+- Proxy management on the **Advanced** tab: `Direct` / `Launcher` / `Selected` modes with a saved endpoint list and a reachability probe. `Launcher` uses `Minecraft#getProxy`, `Direct` uses `Proxy.NO_PROXY`. Scope is honest — it covers NullTrace's own HTTP traffic, not the game-server connection
 - Encrypted-at-rest account tokens using AES-GCM and owner-only key-file permissions where supported
 - Token-redacting account export
 - Central `ConnectionContext`, `PrivacyPolicy`, `PrivacyDecision`, `AuditLedger`, and server-profile model
 - `/nulltrace audit` and `/nulltrace profile`
-- Pre-connection privacy warning with Cancel / Connect Anyway
-- GitLab CI build, test, adversarial-fixture, JAR inspection, and checksum stages
+- Pre-connection privacy warning that rows each surface as shown/hidden, with **Connect** / **Protect & connect**, a details panel, and a per-server mute
+- GitLab CI build, JUnit policy tests across two Minecraft targets, proxy harness, adversarial fixture, JAR inspection (including a refmap-vs-jar consistency guard), and checksum stages
+- No offline-account path: only authenticated Microsoft sessions can be switched in
 
 ## Privacy architecture
 
