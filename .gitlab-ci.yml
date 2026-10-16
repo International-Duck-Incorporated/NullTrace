@@ -146,6 +146,35 @@ security_audit:
       - release/*.sha256
     expire_in: 30 days
 
+release_tag_guard:
+  # A tag that disagrees with the version baked into the artifacts produces a release the in-game
+  # updater will never offer: it only prompts when the published version is strictly newer than the
+  # installed one. Tag v2.1.0 sat on a 2.0.2 tree, so this job exists to fail instead.
+  stage: security
+  image: eclipse-temurin:25-jdk
+  needs: []
+  rules:
+    - if: '$CI_COMMIT_TAG =~ /^v[0-9]+\.[0-9]+\.[0-9]+$/'
+  script:
+    - |
+      set -eu
+      MOD_VERSION="$(sed -n 's/^mod_version=\(.*\)$/\1/p' gradle.properties | head -n 1)"
+      TAG_VERSION="${CI_COMMIT_TAG#v}"
+      if [ -z "$MOD_VERSION" ]; then
+        echo "Could not read mod_version from gradle.properties" >&2
+        exit 1
+      fi
+      if [ "$MOD_VERSION" != "$TAG_VERSION" ]; then
+        echo "Tag $CI_COMMIT_TAG does not match mod_version=$MOD_VERSION in gradle.properties." >&2
+        echo "Artifacts would be named +v$MOD_VERSION, so existing $TAG_VERSION installs would never be offered them." >&2
+        exit 1
+      fi
+      echo "Tag $CI_COMMIT_TAG matches gradle.properties ($MOD_VERSION)."
+    - |
+      if ! grep -q "^## \[${CI_COMMIT_TAG#v}\]" CHANGELOG.md; then
+        echo "WARNING: CHANGELOG.md has no '## [${CI_COMMIT_TAG#v}]' section for this release." >&2
+      fi
+
 publish:
   stage: release
   image: alpine:3.21
@@ -155,13 +184,26 @@ publish:
   rules:
     - if: '$CI_COMMIT_TAG =~ /^v[0-9]+\.[0-9]+\.[0-9]+$/'
   before_script:
-    - apk add --no-cache curl
+    - apk add --no-cache curl unzip
   script:
     - |
       set -eu
       API="$CI_API_V4_URL/projects/$CI_PROJECT_ID"
       RELEASE_URL="$API/releases"
       VERSION="$CI_COMMIT_TAG"
+      EXPECTED_VERSION="${VERSION#v}"
+
+      # Every artifact must carry the tag's version: the updater compares versions, so a jar that
+      # reports something else would be published under a number nobody can be notified about.
+      for JAR in release/*.jar; do
+        # fabric.mod.json ships minified on one line, so match the key anywhere on the line.
+        ACTUAL_VERSION="$(unzip -p "$JAR" fabric.mod.json | grep -oE '"version"[[:space:]]*:[[:space:]]*"[^"]*"' | head -n 1 | sed 's/.*:[[:space:]]*"\([^"]*\)"/\1/')"
+        if [ "$ACTUAL_VERSION" != "$EXPECTED_VERSION" ]; then
+          echo "$JAR reports version '$ACTUAL_VERSION', but the tag is $VERSION" >&2
+          exit 1
+        fi
+      done
+      echo "All artifacts report version $EXPECTED_VERSION"
 
       # Create the GitLab release. A pre-existing release is harmless; assets
       # are still uploaded/linked below.

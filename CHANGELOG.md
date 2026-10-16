@@ -4,7 +4,11 @@ All notable changes to NullTrace are documented here.
 
 ## [Unreleased]
 
-## [2.1.0] - 2026-10-17
+## [2.1.1] - 2026-10-17
+
+Version note: an earlier build was published as 2.1.0 before the proxy manager, the redesigned
+connection warning and the test suite landed. 2.1.1 supersedes it, and installations on 2.1.0
+are offered 2.1.1 normally — the updater only prompts when the published version is newer.
 
 ### Added
 - Added unit tests for the warning decision (`WarningAssessment`), the per-server policy profiles, the audit ledger and the local-address guard, plus a standalone proxy harness (54 expectations) that runs in CI. The previous "adversarial fixture" asserted only that a hardcoded list of probe names was stable and never executed NullTrace code.
@@ -17,6 +21,7 @@ All notable changes to NullTrace are documented here.
 - Added CI dependency reporting, JAR inspection, SHA-256 checksum generation, and checksum release assets.
 - Added CurseForge update checks through the public CFWidget metadata API, alongside GitLab, with compatible stable Fabric release selection and independent source failure handling.
 - Added regression tests for release metadata, Minecraft-version filtering, and semantic version comparison.
+- Release publishing refuses a tag that disagrees with `mod_version` in `gradle.properties` (a mismatch makes the release invisible to the updater, which only offers strictly newer versions), warns when `CHANGELOG.md` has no section for the tag, and asserts that every shipped jar reports the tag's version before uploading.
 - Release inspection (`security_audit`) now fails the pipeline when a mixin config names a refmap file the jar does not contain — the packaging drift that made the 26.x builds log a Mixin warning on every startup.
 
 ### Security
@@ -46,7 +51,7 @@ All notable changes to NullTrace are documented here.
 - The pre-connection warning no longer claims installed mods are "potentially identifiable" when it only counted installed mods, and no longer presents reassuring numbers ("0 exposed", "remaining exposure: 0") in the same voice as actual exposure.
 - The pre-connection warning resolves its strings through the private `NullTraceLang` table, so the other bundled locales are used and server resource packs cannot rewrite the text.
 - Escape on the pre-connection warning now returns to the server list instead of dropping the player on an unrelated screen.
-- Updated the project version metadata to 2.1.0.
+- Updated the project version metadata to 2.1.1.
 
 ## [2.0.2] - 2026-09-26
 
