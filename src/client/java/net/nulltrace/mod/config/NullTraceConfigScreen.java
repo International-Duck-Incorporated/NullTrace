@@ -10,6 +10,7 @@ import net.nulltrace.mod.mixin.MeteorMixinCanceller;
 import net.nulltrace.mod.protection.ResourcePackGuard;
 import net.nulltrace.mod.tracking.ModRegistry;
 import net.nulltrace.mod.privacy.ServerProfile;
+import net.nulltrace.mod.proxy.ProxySettings;
 import net.fabricmc.loader.api.FabricLoader;
 import net.fabricmc.loader.api.ModContainer;
 //? if >=26.1 {
@@ -84,6 +85,14 @@ public class NullTraceConfigScreen extends Screen {
     }
     *///?}
     
+    // Tab indices are referenced from other screens (AddAccountScreen, ProxyScreen) and from
+    // the footer logic, so they live in one place instead of as bare literals.
+    public static final int TAB_PROTECTION = 0;
+    public static final int TAB_WHITELIST = 1;
+    public static final int TAB_MISC = 2;
+    public static final int TAB_ADVANCED = 3;
+    public static final int TAB_ACCOUNTS = 4;
+
     private final Screen parent;
     private final NullTraceConfig config;
     
@@ -137,6 +146,7 @@ public class NullTraceConfigScreen extends Screen {
             createProtectionTab(settings),
             createWhitelistTab(settings),
             createMiscTab(settings),
+            createAdvancedTab(settings),
             createAccountsTab()
         );
         
@@ -152,7 +162,7 @@ public class NullTraceConfigScreen extends Screen {
         
         // Create footer buttons
         // Accounts tab is index 3 - reset button doesn't apply to accounts
-        boolean isAccountsTab = this.currentTab == 3;
+        boolean isAccountsTab = this.currentTab == TAB_ACCOUNTS;
         this.resetButton = Button.builder(Component.translatable("controls.reset"), button -> {
             SpoofSettings defaults = new SpoofSettings();
             settings.copyFrom(defaults);
@@ -398,12 +408,6 @@ public class NullTraceConfigScreen extends Screen {
                     (button, value) -> { settings.setDisableTelemetry(value); config.save(); }));
         }
 
-        // Proxy support is opt-in and uses the proxy configured by Minecraft/the launcher.
-        widgets.add(cycleBuilder(COLORED_BOOL_TO_TEXT, List.of(Boolean.TRUE, Boolean.FALSE), settings.isUseProxy())
-                .withTooltip(v -> Tooltip.create(NullTraceLang.component(NullTraceStrings.OPTION_USE_PROXY_TOOLTIP)))
-                .create(0, 0, 230, 20, NullTraceLang.component(NullTraceStrings.OPTION_USE_PROXY),
-                (button, value) -> { settings.setUseProxy(value); config.save(); }));
-
         widgets.add(cycleBuilder(COLORED_BOOL_TO_TEXT, List.of(Boolean.TRUE, Boolean.FALSE), settings.isBlockServerCookies())
                 .withTooltip(v -> Tooltip.create(NullTraceLang.component(NullTraceStrings.OPTION_BLOCK_SERVER_COOKIES_TOOLTIP)))
                 .create(0, 0, 230, 20, NullTraceLang.component(NullTraceStrings.OPTION_BLOCK_SERVER_COOKIES),
@@ -462,6 +466,61 @@ public class NullTraceConfigScreen extends Screen {
         return new WidgetTab(NullTraceLang.component(NullTraceStrings.TAB_MISC), widgets);
     }
     
+    /**
+     * Advanced tab: things that affect the whole client rather than one protection —
+     * currently the proxy configuration (mode plus the saved endpoint list).
+     */
+    private Tab createAdvancedTab(SpoofSettings settings) {
+        List<AbstractWidget> widgets = new ArrayList<>();
+        ProxySettings proxy = config.proxySettings();
+
+        widgets.add(createSectionHeader(NullTraceLang.tr(NullTraceStrings.SECTION_PROXY)));
+
+        widgets.add(cycleBuilder(this::proxyModeLabel, List.of(ProxySettings.Mode.values()), proxy.mode())
+                .withTooltip(v -> Tooltip.create(NullTraceLang.component(NullTraceStrings.OPTION_PROXY_MODE_TOOLTIP)))
+                .create(0, 0, 230, 20, NullTraceLang.component(NullTraceStrings.OPTION_PROXY_MODE),
+                (button, value) -> { proxy.setMode(value); config.save(); refreshScreen(); }));
+
+        widgets.add(Button.builder(NullTraceLang.component(NullTraceStrings.OPTION_PROXY_MANAGE), button -> {
+            //? if >=26.2 {
+            this.minecraft.setScreenAndShow(new ProxyScreen(this));
+            //?} else {
+            /*this.minecraft.setScreen(new ProxyScreen(this));
+            *///?}
+        }).size(230, 20)
+          .tooltip(Tooltip.create(NullTraceLang.component(NullTraceStrings.OPTION_PROXY_MANAGE_TOOLTIP)))
+          .build());
+
+        // Current state, so the tab answers "what will actually be used?" at a glance.
+        widgets.add(createSectionHeader(NullTraceLang.tr(proxyStatusKey(proxy))));
+
+        // Honest scope note: this is HTTP traffic, not the game connection.
+        widgets.add(createSectionHeader(NullTraceLang.tr(NullTraceStrings.PROXY_NOTE_LINE_1)));
+        widgets.add(createSectionHeader(NullTraceLang.tr(NullTraceStrings.PROXY_NOTE_LINE_2)));
+
+        return new WidgetTab(NullTraceLang.component(NullTraceStrings.TAB_ADVANCED), widgets);
+    }
+
+    private Component proxyModeLabel(ProxySettings.Mode mode) {
+        return switch (mode) {
+            case DIRECT -> NullTraceLang.component(NullTraceStrings.PROXY_MODE_DIRECT);
+            case LAUNCHER -> NullTraceLang.component(NullTraceStrings.PROXY_MODE_LAUNCHER);
+            case SELECTED -> NullTraceLang.component(NullTraceStrings.PROXY_MODE_SELECTED);
+        };
+    }
+
+    /** What the proxy configuration currently resolves to, as a section header string. */
+    private String proxyStatusKey(ProxySettings proxy) {
+        if (proxy.selectionMissing()) {
+            return NullTraceStrings.PROXY_STATUS_ACTIVE_MISSING;
+        }
+        return switch (proxy.mode()) {
+            case DIRECT -> NullTraceStrings.PROXY_STATUS_ACTIVE_DIRECT;
+            case LAUNCHER -> NullTraceStrings.PROXY_STATUS_ACTIVE_LAUNCHER;
+            case SELECTED -> NullTraceStrings.PROXY_STATUS_ACTIVE_SELECTED;
+        };
+    }
+
     private Tab createAccountsTab() {
         List<AbstractWidget> widgets = new ArrayList<>();
         AccountManager accountManager = AccountManager.getInstance();
@@ -478,7 +537,7 @@ public class NullTraceConfigScreen extends Screen {
             widgets.add(createSectionHeader(NullTraceLang.tr(NullTraceStrings.SECTION_SAVED_ACCOUNTS)));
             
             for (Account account : accountManager.getAccounts()) {
-                String displayName = account.getUsername() + (account.isCracked() ? " \u00A77(offline)" : "");
+                String displayName = account.getUsername();
                 // Check if this account is actually the current logged-in user (not just stored as active)
                 boolean isLoggedIn = currentUser.equals(account.getUsername());
                 boolean isValid = account.isValid();
@@ -630,16 +689,6 @@ public class NullTraceConfigScreen extends Screen {
           .tooltip(Tooltip.create(NullTraceLang.component(NullTraceStrings.ACCOUNT_ADD_SESSION_TOOLTIP)))
           .build());
 
-        widgets.add(Button.builder(NullTraceLang.component(NullTraceStrings.ACCOUNT_ADD_OFFLINE), button -> {
-            //? if >=26.2 {
-            this.minecraft.setScreenAndShow(new AddCrackedAccountScreen(this));
-            //?} else {
-            /*this.minecraft.setScreen(new AddCrackedAccountScreen(this));
-            *///?}
-        }).size(230, 20)
-          .tooltip(Tooltip.create(NullTraceLang.component(NullTraceStrings.ACCOUNT_ADD_OFFLINE_TOOLTIP)))
-          .build());
-        
         // Import/Export buttons
         widgets.add(new ImportExportRowWidget(
                 // Import action
@@ -1404,7 +1453,7 @@ public class NullTraceConfigScreen extends Screen {
         // Update reset button state based on current tab (Accounts tab = index 3)
         if (this.resetButton != null) {
             int currentTabIndex = getCurrentTabIndex();
-            boolean isAccountsTab = currentTabIndex == 3;
+            boolean isAccountsTab = currentTabIndex == TAB_ACCOUNTS;
             this.resetButton.active = !isAccountsTab;
         }
         

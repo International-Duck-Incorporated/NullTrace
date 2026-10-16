@@ -146,6 +146,12 @@ public class SpoofSettings {
     // Network
     // Uses the proxy configured by the Minecraft launcher/client. Disabled by default
     // so existing direct-connection behavior is preserved.
+    /**
+     * @deprecated superseded by {@link net.nulltrace.mod.proxy.ProxySettings.Mode}. Kept only to
+     *     migrate configs written before the proxy list existed; the mode is now the single
+     *     source of truth (see {@code NullTraceConfig#proxySettings()}).
+     */
+    @Deprecated
     private boolean useProxy = false;
     private boolean blockServerCookies = true;
     private boolean blockServerTransfers = true;

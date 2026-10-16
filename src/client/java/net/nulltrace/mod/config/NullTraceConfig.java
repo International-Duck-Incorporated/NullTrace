@@ -5,6 +5,7 @@ import net.nulltrace.mod.tracking.ModRegistry;
 import net.nulltrace.mod.privacy.PrivacyAction;
 import net.nulltrace.mod.privacy.PrivacyPolicy;
 import net.nulltrace.mod.privacy.PrivacySurface;
+import net.nulltrace.mod.proxy.ProxySettings;
 import net.nulltrace.mod.privacy.ServerProfile;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
@@ -72,6 +73,8 @@ public class NullTraceConfig {
     private SpoofSettings settings = new SpoofSettings();
     private volatile String currentServer = null;
     private final Map<String, ServerProfile> serverProfiles = new LinkedHashMap<>();
+    /** Saved proxy endpoints and the selected mode. Owned here so Reset cannot wipe the list. */
+    private final ProxySettings proxySettings = new ProxySettings();
 
     private NullTraceConfig() {
         load();
@@ -145,6 +148,21 @@ public class NullTraceConfig {
                 settings = SpoofSettings.fromJson(
                     json.getAsJsonObject("defaultSettings")
                 );
+            }
+
+            // Proxy configuration. A config written before this section existed carries only
+            // SpoofSettings.useProxy, so migrate that boolean onto the new tri-state mode:
+            // true meant "use the launcher's proxy", false meant "connect directly".
+            if (json.has("proxy") && json.get("proxy").isJsonObject()) {
+                ProxySettings loadedProxy = ProxySettings.fromJson(json.getAsJsonObject("proxy"));
+                proxySettings.setMode(loadedProxy.mode());
+                proxySettings.select(loadedProxy.selected());
+                for (var entry : loadedProxy.entries()) {
+                    proxySettings.add(entry);
+                }
+            } else if (settings != null) {
+                proxySettings.setMode(settings.isUseProxy()
+                        ? ProxySettings.Mode.LAUNCHER : ProxySettings.Mode.DIRECT);
             }
 
             serverProfiles.clear();
@@ -261,6 +279,7 @@ public class NullTraceConfig {
                 profiles.add(entry.getKey(), entry.getValue().toJson());
             }
             json.add("serverProfiles", profiles);
+            json.add("proxy", proxySettings.toJson());
 
             Files.createDirectories(CONFIG_PATH.getParent());
 
@@ -289,6 +308,11 @@ public class NullTraceConfig {
 
     public SpoofSettings getSettings() {
         return settings;
+    }
+
+    /** Saved proxy endpoints and the active proxy mode. See {@link ProxySettings}. */
+    public synchronized ProxySettings proxySettings() {
+        return proxySettings;
     }
 
     public void setCurrentServer(String server) {

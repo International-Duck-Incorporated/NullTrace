@@ -202,7 +202,7 @@ public class AccountManager {
             safe.remove("refreshToken");
             safe.remove("accessTokenEncrypted");
             safe.remove("refreshTokenEncrypted");
-            safe.addProperty("requiresReauthentication", !account.isCracked());
+            safe.addProperty("requiresReauthentication", true);
             accountsArray.add(safe);
         }
         json.add("accounts", accountsArray);
@@ -223,6 +223,11 @@ public class AccountManager {
                     try {
                         JsonObject accountJson = accountsArray.get(i).getAsJsonObject();
                         Account account = Account.fromJson(accountJson);
+                        if (account == null) {
+                            // Legacy offline/cracked entry from an older version: dropped.
+                            NullTrace.LOGGER.info("[NullTrace] Skipped a stored account that is no longer supported");
+                            continue;
+                        }
                         if (account.hasValidInfo()) {
                             // Don't add duplicates
                             boolean exists = accounts.stream()
@@ -276,9 +281,8 @@ public class AccountManager {
                 for (int i = 0; i < accounts.size(); i++) {
                     Account account = accounts.get(i);
 
-                    // Cracked accounts are always valid, skip validation
-                    if (account.isCracked()) {
-                        valid++;
+                    if (!(account instanceof SessionAccount session)) {
+                        skipped++;
                         continue;
                     }
 
@@ -292,7 +296,7 @@ public class AccountManager {
                         }
                     }
 
-                    SessionAccount.ValidationResult result = ((SessionAccount) account).revalidateWithResult();
+                    SessionAccount.ValidationResult result = session.revalidateWithResult();
                     switch (result) {
                         case VALID -> valid++;
                         case INVALID -> invalid++;
@@ -350,6 +354,10 @@ public class AccountManager {
                     try {
                         JsonObject accountJson = accountsArray.get(i).getAsJsonObject();
                         Account account = Account.fromJson(accountJson);
+                        if (account == null) {
+                            NullTrace.LOGGER.info("[NullTrace] Skipped a stored account that is no longer supported");
+                            continue;
+                        }
                         if (account.hasValidInfo()) {
                             accounts.add(account);
                             if (account instanceof SessionAccount session

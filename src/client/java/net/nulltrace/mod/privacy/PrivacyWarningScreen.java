@@ -231,6 +231,14 @@ public final class PrivacyWarningScreen extends Screen {
     /** One short verdict per row. Counts are passed only where the copy uses them. */
     private String statusText(ConnectionWarning.Area area, boolean visible) {
         switch (area) {
+            case CLIENT_BRAND:
+                // "protected" for the brand means replaced, not omitted.
+                if (!visible && summary.spoofedBrand() != null) {
+                    return NullTraceLang.tr(NullTraceStrings.WARNING_STATUS_BRAND_SPOOFED,
+                            summary.spoofedBrand());
+                }
+                return NullTraceLang.tr(visible ? NullTraceStrings.WARNING_STATUS_BRAND_VISIBLE
+                        : NullTraceStrings.WARNING_STATUS_BRAND_HIDDEN);
             case MOD_CHANNELS:
                 return NullTraceLang.tr(visible ? NullTraceStrings.WARNING_STATUS_CHANNELS_VISIBLE
                                 : NullTraceStrings.WARNING_STATUS_CHANNELS_HIDDEN,

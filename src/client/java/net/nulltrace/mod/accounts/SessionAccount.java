@@ -439,11 +439,6 @@ public class SessionAccount implements Account {
         return username != null && !username.isBlank() && uuid != null && !uuid.isBlank();
     }
 
-    @Override
-    public boolean isCracked() {
-        return false;
-    }
-    
     /**
      * Attempts to refresh the access token using the stored refresh token.
      * This goes through the full Microsoft OAuth -> Xbox -> Minecraft auth chain.

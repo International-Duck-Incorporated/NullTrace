@@ -15,6 +15,7 @@ public final class NullTraceStrings {
     public static final String TAB_ACCOUNTS = "nulltrace.tab.accounts";
     public static final String TAB_WHITELIST = "nulltrace.tab.whitelist";
     public static final String TAB_MISC = "nulltrace.tab.misc";
+    public static final String TAB_ADVANCED = "nulltrace.tab.advanced";
 
     // Settings-menu section headers (values carry their own §-formatting).
     public static final String SECTION_CLIENT_BRAND = "nulltrace.section.clientBrand";
@@ -29,6 +30,7 @@ public final class NullTraceStrings {
     public static final String SECTION_INSTALLED_MODS = "nulltrace.section.installedMods";
     public static final String SECTION_RESTART_WARNING = "nulltrace.section.restartWarning";
     public static final String SECTION_DEBUG = "nulltrace.section.debug";
+    public static final String SECTION_PROXY = "nulltrace.section.proxy";
     public static final String ACCOUNT_CURRENT = "nulltrace.account.current";
     public static final String WHITELIST_SUFFIX_CHANNELS = "nulltrace.whitelist.suffix.channels";
 
@@ -85,8 +87,6 @@ public final class NullTraceStrings {
     public static final String OPTION_NORMALIZE_PARTICLES = "nulltrace.option.normalizeParticles";
     public static final String OPTION_SERVER_PROFILE = "nulltrace.option.serverProfile";
     public static final String OPTION_SERVER_PROFILE_TOOLTIP = "nulltrace.option.serverProfile.tooltip";
-    public static final String OPTION_USE_PROXY = "nulltrace.option.useProxy";
-    public static final String OPTION_USE_PROXY_TOOLTIP = "nulltrace.option.useProxy.tooltip";
     public static final String OPTION_BLOCK_SERVER_COOKIES = "nulltrace.option.blockServerCookies";
     public static final String OPTION_BLOCK_SERVER_COOKIES_TOOLTIP = "nulltrace.option.blockServerCookies.tooltip";
     public static final String OPTION_BLOCK_SERVER_TRANSFERS = "nulltrace.option.blockServerTransfers";
@@ -110,8 +110,6 @@ public final class NullTraceStrings {
 
     public static final String ACCOUNT_ADD_SESSION = "nulltrace.account.addSession";
     public static final String ACCOUNT_ADD_SESSION_TOOLTIP = "nulltrace.account.addSession.tooltip";
-    public static final String ACCOUNT_ADD_OFFLINE = "nulltrace.account.addOffline";
-    public static final String ACCOUNT_ADD_OFFLINE_TOOLTIP = "nulltrace.account.addOffline.tooltip";
 
     public static final String UPDATE_TITLE = "nulltrace.update.title";
     public static final String UPDATE_MESSAGE = "nulltrace.update.message";
@@ -230,15 +228,6 @@ public final class NullTraceStrings {
     public static final String ACCOUNT_SUCCESS_REFRESH_SUFFIX = "nulltrace.account.success.refreshSuffix";
     public static final String ACCOUNT_ERROR_INVALID_TOKEN = "nulltrace.account.error.invalidToken";
 
-    // AddCrackedAccountScreen (offline)
-    public static final String ACCOUNT_SCREEN_OFFLINE_TITLE = "nulltrace.account.screen.offline.title";
-    public static final String ACCOUNT_SCREEN_USERNAME_LABEL = "nulltrace.account.screen.usernameLabel";
-    public static final String ACCOUNT_SCREEN_USERNAME_HINT = "nulltrace.account.screen.usernameHint";
-    public static final String ACCOUNT_ERROR_EMPTY_USERNAME = "nulltrace.account.error.emptyUsername";
-    public static final String ACCOUNT_STATUS_ADDING = "nulltrace.account.status.adding";
-    public static final String ACCOUNT_SUCCESS_ADDED_OFFLINE = "nulltrace.account.success.addedOffline";
-    public static final String ACCOUNT_ERROR_FAILED_ADD = "nulltrace.account.error.failedToAdd";
-
     // Multiplayer-screen NullTrace button
     public static final String BUTTON_SETTINGS_TOOLTIP = "nulltrace.button.settings.tooltip";
 
@@ -306,6 +295,7 @@ public final class NullTraceStrings {
     // Row verdicts — §a when the server receives nothing from that area, §c when it does.
     public static final String WARNING_STATUS_BRAND_VISIBLE = "nulltrace.warning.status.brand.visible";
     public static final String WARNING_STATUS_BRAND_HIDDEN = "nulltrace.warning.status.brand.hidden";
+    public static final String WARNING_STATUS_BRAND_SPOOFED = "nulltrace.warning.status.brand.spoofed";
     public static final String WARNING_STATUS_CHANNELS_VISIBLE = "nulltrace.warning.status.channels.visible";
     public static final String WARNING_STATUS_CHANNELS_HIDDEN = "nulltrace.warning.status.channels.hidden";
     public static final String WARNING_STATUS_PACK_IDS_VISIBLE = "nulltrace.warning.status.packIds.visible";
@@ -344,4 +334,54 @@ public final class NullTraceStrings {
     public static final String WARNING_BUTTON_MUTE_TOOLTIP = "nulltrace.warning.button.mute.tooltip";
     public static final String WARNING_BUTTON_SETTINGS = "nulltrace.warning.button.settings";
     public static final String WARNING_BUTTON_SETTINGS_TOOLTIP = "nulltrace.warning.button.settings.tooltip";
+
+    // Proxy configuration (Advanced tab + ProxyScreen). Everything the user sees about
+    // the proxy lives here, including the parse errors, so the model file stays UI-agnostic.
+    public static final String OPTION_PROXY_MODE = "nulltrace.option.proxyMode";
+    public static final String OPTION_PROXY_MODE_TOOLTIP = "nulltrace.option.proxyMode.tooltip";
+    public static final String OPTION_PROXY_MANAGE = "nulltrace.option.proxyManage";
+    public static final String OPTION_PROXY_MANAGE_TOOLTIP = "nulltrace.option.proxyManage.tooltip";
+    public static final String PROXY_MODE_DIRECT = "nulltrace.proxy.mode.direct";
+    public static final String PROXY_MODE_LAUNCHER = "nulltrace.proxy.mode.launcher";
+    public static final String PROXY_MODE_SELECTED = "nulltrace.proxy.mode.selected";
+    public static final String PROXY_STATUS_ACTIVE_DIRECT = "nulltrace.proxy.active.direct";
+    public static final String PROXY_STATUS_ACTIVE_LAUNCHER = "nulltrace.proxy.active.launcher";
+    public static final String PROXY_STATUS_ACTIVE_SELECTED = "nulltrace.proxy.active.selected";
+    public static final String PROXY_STATUS_ACTIVE_MISSING = "nulltrace.proxy.active.missing";
+    public static final String PROXY_NOTE_LINE_1 = "nulltrace.proxy.note.line1";
+    public static final String PROXY_NOTE_LINE_2 = "nulltrace.proxy.note.line2";
+
+    public static final String PROXY_SCREEN_TITLE = "nulltrace.proxy.screen.title";
+    public static final String PROXY_SCREEN_HINT = "nulltrace.proxy.screen.hint";
+    public static final String PROXY_SCREEN_INPUT_LABEL = "nulltrace.proxy.screen.inputLabel";
+    public static final String PROXY_SCREEN_INPUT_HINT = "nulltrace.proxy.screen.inputHint";
+    public static final String PROXY_SCREEN_ADD = "nulltrace.proxy.screen.add";
+    public static final String PROXY_SCREEN_ADD_TOOLTIP = "nulltrace.proxy.screen.add.tooltip";
+    public static final String PROXY_SCREEN_EMPTY = "nulltrace.proxy.screen.empty";
+    public static final String PROXY_SCREEN_USE = "nulltrace.proxy.screen.use";
+    public static final String PROXY_SCREEN_IN_USE = "nulltrace.proxy.screen.inUse";
+    public static final String PROXY_SCREEN_MOVE_UP_TOOLTIP = "nulltrace.proxy.screen.moveUp.tooltip";
+    public static final String PROXY_SCREEN_MOVE_DOWN_TOOLTIP = "nulltrace.proxy.screen.moveDown.tooltip";
+    public static final String PROXY_SCREEN_REMOVE_TOOLTIP = "nulltrace.proxy.screen.remove.tooltip";
+    public static final String PROXY_SCREEN_PAGE = "nulltrace.proxy.screen.page";
+    public static final String PROXY_SCREEN_TEST = "nulltrace.proxy.screen.test";
+    public static final String PROXY_SCREEN_TEST_TOOLTIP = "nulltrace.proxy.screen.test.tooltip";
+    public static final String PROXY_SCREEN_BACK = "nulltrace.proxy.screen.back";
+
+    public static final String PROXY_STATUS_USING = "nulltrace.proxy.status.using";
+    public static final String PROXY_STATUS_REMOVED = "nulltrace.proxy.status.removed";
+    public static final String PROXY_STATUS_EXISTS = "nulltrace.proxy.status.exists";
+    public static final String PROXY_STATUS_ADDED = "nulltrace.proxy.status.added";
+    public static final String PROXY_STATUS_ADDED_SELECTED = "nulltrace.proxy.status.addedSelected";
+    public static final String PROXY_STATUS_TESTING = "nulltrace.proxy.status.testing";
+    public static final String PROXY_STATUS_TEST_NO_SELECTION = "nulltrace.proxy.status.testNoSelection";
+    public static final String PROXY_STATUS_TEST_OK = "nulltrace.proxy.status.testOk";
+    public static final String PROXY_STATUS_TEST_FAIL = "nulltrace.proxy.status.testFail";
+
+    public static final String PROXY_ERROR_EMPTY = "nulltrace.proxy.error.empty";
+    public static final String PROXY_ERROR_CREDENTIALS = "nulltrace.proxy.error.credentials";
+    public static final String PROXY_ERROR_SCHEME = "nulltrace.proxy.error.scheme";
+    public static final String PROXY_ERROR_HOST = "nulltrace.proxy.error.host";
+    public static final String PROXY_ERROR_PORT = "nulltrace.proxy.error.port";
+    public static final String PROXY_ERROR_PATH = "nulltrace.proxy.error.path";
 }

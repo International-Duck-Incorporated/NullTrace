@@ -102,6 +102,10 @@ public final class ConnectionWarning {
                 server,
                 serverKey,
                 policy,
+                // The brand is replaced, not suppressed: the server still receives
+                // "vanilla" (or "fabric"), so the screen must not report "not sent".
+                policy.actionFor(PrivacySurface.CLIENT_BRAND) == PrivacyAction.BLOCK
+                        ? settings.getEffectiveBrand() : null,
                 settings.getWarningMode() == SpoofSettings.WarningMode.ALWAYS,
                 settings.isWarningMuted(serverKey),
                 ModRegistry.getAllMods().size(),
@@ -118,6 +122,7 @@ public final class ConnectionWarning {
         private final String server;
         private final String serverKey;
         private final PrivacyPolicy policy;
+        private final String spoofedBrand;
         private final boolean alwaysWarn;
         private final boolean muted;
         private final int installedMods;
@@ -128,12 +133,14 @@ public final class ConnectionWarning {
         private final int knownPackCount;
         private final int shaderCount;
 
-        private Summary(String server, String serverKey, PrivacyPolicy policy, boolean alwaysWarn,
-                        boolean muted, int installedMods, int channelCount, int exposedChannels,
-                        int translationKeys, int keybindCount, int knownPackCount, int shaderCount) {
+        private Summary(String server, String serverKey, PrivacyPolicy policy, String spoofedBrand,
+                        boolean alwaysWarn, boolean muted, int installedMods, int channelCount,
+                        int exposedChannels, int translationKeys, int keybindCount, int knownPackCount,
+                        int shaderCount) {
             this.server = server == null || server.isBlank() ? "unknown" : server;
             this.serverKey = serverKey;
             this.policy = policy;
+            this.spoofedBrand = spoofedBrand;
             this.alwaysWarn = alwaysWarn;
             this.muted = muted;
             this.installedMods = installedMods;
@@ -187,6 +194,13 @@ public final class ConnectionWarning {
         public boolean shouldWarn() {
             return !muted && (alwaysWarn || severity() != Severity.OK);
         }
+
+        /**
+         * The brand reported to the server when spoofing is active ("vanilla" or "fabric"),
+         * or {@code null} when the real brand is sent. Used so the warning screen does not
+         * claim the brand is hidden when it is in fact replaced.
+         */
+        public String spoofedBrand() { return spoofedBrand; }
 
         public int installedMods() { return installedMods; }
         public int channelCount() { return channelCount; }

@@ -233,13 +233,16 @@ public class AddAccountScreen extends Screen {
         if (parent instanceof NullTraceConfigScreen configScreen) {
             grandParent = configScreen.getParent();
         }
-        // Create a fresh config screen with the Accounts tab selected (index 3)
+        // Create a fresh config screen with the Accounts tab selected.
         //? if >=26.2 {
-        this.minecraft.setScreenAndShow(new NullTraceConfigScreen(grandParent, 3, 0));
+        this.minecraft.setScreenAndShow(new NullTraceConfigScreen(grandParent,
+                NullTraceConfigScreen.TAB_ACCOUNTS, 0));
         //?} else if >=1.21.6 {
-        /*this.minecraft.setScreen(new NullTraceConfigScreen(grandParent, 3, 0));
+        /*this.minecraft.setScreen(new NullTraceConfigScreen(grandParent,
+                NullTraceConfigScreen.TAB_ACCOUNTS, 0));
         *///?} else {
-        /*this.minecraft.setScreen(new NullTraceConfigScreen(grandParent, 3));*/
+        /*this.minecraft.setScreen(new NullTraceConfigScreen(grandParent,
+                NullTraceConfigScreen.TAB_ACCOUNTS));*/
         //?}
     }
     

@@ -5,6 +5,7 @@ All notable changes to NullTrace are documented here.
 ## [Unreleased]
 
 ### Added
+- Added proxy management on a new **Advanced** config tab: paste an endpoint, keep a list, select the active one, reorder or remove entries, and probe the selected endpoint for reachability (`docs/design/proxy-management.md`).
 - Added the central `ConnectionContext` / `PrivacyPolicy` / `AuditLedger` model with explainable `ALLOW`, `BLOCK`, `WARN`, and `LOG` decisions.
 - Added `/nulltrace audit` and per-server `STANDARD`, `STRICT`, `MAXIMUM_PRIVACY`, and `CUSTOM` profiles.
 - Added a pre-connection privacy warning. It now reports each surface as shown/hidden in plain language, offers `Connect` and `Protect & connect`, a details panel with the raw counters, a settings shortcut, and a per-server warning mute (see `docs/design/privacy-warning-redesign.md`).
@@ -15,11 +16,13 @@ All notable changes to NullTrace are documented here.
 - Added regression tests for release metadata, Minecraft-version filtering, and semantic version comparison.
 
 ### Security
+- Removed the offline ("cracked") account path. The account switcher now only swaps in authenticated Microsoft sessions, and stored entries written by older versions with `type: "cracked"` are dropped instead of restored. Do not publish JARs built from older revisions for CurseForge or any other distribution.
 - Removed the redirect-limit raw `Socket` side effect; rejected redirect hops are now checked and never opened.
 - Added AES-GCM encrypted-at-rest storage for session and refresh tokens; exports are redacted and require re-authentication.
 - Routed account HTTP requests through the same explicit Minecraft proxy setting as gameplay.
 
 ### Changed
+- Replaced the "Play through proxy" boolean with a tri-state proxy mode (`Direct` / `Launcher` / `Selected`). Configurations written by older versions migrate automatically (`true` → `Launcher`), and the proxy list lives outside `SpoofSettings` so Reset cannot delete saved endpoints.
 - Updated the roadmap and release pipeline to describe the GitLab repository and all four supported targets.
 - Rewrote the README with official CurseForge and GitLab downloads, current configuration behavior, build/test instructions, and update-check network disclosure.
 - The pre-connection warning now derives its rows from the effective per-server `PrivacyPolicy` instead of raw counters, so the screen can no longer disagree with what the protections actually do.
