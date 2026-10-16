@@ -218,6 +218,10 @@ public class NullTraceConfigScreen extends Screen {
         if (versionOutdated) {
             this.versionLabel.setTooltip(Tooltip.create(NullTraceLang.component(
                     NullTraceStrings.VERSION_TOOLTIP_OUTDATED, UpdateChecker.getLatestVersion())));
+        } else if (!config.getSettings().isCheckUpdates()) {
+            // "Up to date" would be a lie when no check ran.
+            this.versionLabel.setTooltip(Tooltip.create(NullTraceLang.component(
+                    NullTraceStrings.VERSION_TOOLTIP_DISABLED)));
         } else {
             this.versionLabel.setTooltip(Tooltip.create(NullTraceLang.component(NullTraceStrings.VERSION_TOOLTIP_UPTODATE)));
         }
@@ -497,6 +501,19 @@ public class NullTraceConfigScreen extends Screen {
         // Honest scope note: this is HTTP traffic, not the game connection.
         widgets.add(createSectionHeader(NullTraceLang.tr(NullTraceStrings.PROXY_NOTE_LINE_1)));
         widgets.add(createSectionHeader(NullTraceLang.tr(NullTraceStrings.PROXY_NOTE_LINE_2)));
+
+        // Network section: every outbound request the mod itself makes, switchable.
+        widgets.add(createSectionHeader(NullTraceLang.tr(NullTraceStrings.SECTION_NETWORK)));
+
+        widgets.add(cycleBuilder(COLORED_BOOL_TO_TEXT, List.of(Boolean.TRUE, Boolean.FALSE), settings.isCheckUpdates())
+                .withTooltip(v -> Tooltip.create(NullTraceLang.component(NullTraceStrings.OPTION_CHECK_UPDATES_TOOLTIP)))
+                .create(0, 0, 230, 20, NullTraceLang.component(NullTraceStrings.OPTION_CHECK_UPDATES),
+                (button, value) -> { settings.setCheckUpdates(value); config.save(); refreshScreen(); }));
+
+        widgets.add(cycleBuilder(COLORED_BOOL_TO_TEXT, List.of(Boolean.TRUE, Boolean.FALSE), settings.isVerifyJarIntegrity())
+                .withTooltip(v -> Tooltip.create(NullTraceLang.component(NullTraceStrings.OPTION_VERIFY_JAR_TOOLTIP)))
+                .create(0, 0, 230, 20, NullTraceLang.component(NullTraceStrings.OPTION_VERIFY_JAR),
+                (button, value) -> { settings.setVerifyJarIntegrity(value); config.save(); }));
 
         return new WidgetTab(NullTraceLang.component(NullTraceStrings.TAB_ADVANCED), widgets);
     }

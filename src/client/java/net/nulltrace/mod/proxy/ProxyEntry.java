@@ -133,9 +133,9 @@ public final class ProxyEntry {
             }
         }
 
-        // A path/query means the user pasted a full URL; say so precisely instead of
-        // failing later on "the port looks wrong" for something like host:8080/path.
-        if (text.contains("/")) {
+        // A path, query or fragment means the user pasted a full URL; say so precisely instead
+        // of failing later on "the port looks wrong" for something like host:8080/path?token=x.
+        if (text.contains("/") || text.contains("?") || text.contains("#")) {
             return new ParseResult(null, NullTraceStrings.PROXY_ERROR_PATH);
         }
 
@@ -155,8 +155,13 @@ public final class ProxyEntry {
             portText = remainder.substring(1);
         } else {
             int colon = text.lastIndexOf(':');
-            if (colon <= 0) {
+            if (colon < 0) {
                 return new ParseResult(null, NullTraceStrings.PROXY_ERROR_PORT);
+            }
+            if (colon == 0) {
+                // ":1080" — the port is there, the host is missing. Saying "include a port"
+                // would send the user looking in the wrong place.
+                return new ParseResult(null, NullTraceStrings.PROXY_ERROR_HOST);
             }
             host = text.substring(0, colon);
             portText = text.substring(colon + 1);

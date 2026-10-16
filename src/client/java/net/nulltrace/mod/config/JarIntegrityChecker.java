@@ -6,6 +6,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import net.fabricmc.loader.api.FabricLoader;
+import net.nulltrace.mod.util.HttpClients;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -26,10 +27,19 @@ public final class JarIntegrityChecker {
 
     private static final String RELEASES_BASE_URL = "https://gitlab.com/api/v4/projects/international-duck-incorporated%2FNullTrace/releases/v";
 
-    private static final HttpClient HTTP_CLIENT = HttpClient.newBuilder()
-            .connectTimeout(Duration.ofSeconds(10))
-            .followRedirects(HttpClient.Redirect.NORMAL)
-            .build();
+    /** Lazily created so the configured proxy applies; see {@link HttpClients}. */
+    private static volatile HttpClient httpClient;
+
+    private static HttpClient http() {
+        HttpClient existing = httpClient;
+        if (existing != null) return existing;
+        synchronized (JarIntegrityChecker.class) {
+            if (httpClient == null) {
+                httpClient = HttpClients.outbound(Duration.ofSeconds(10), true);
+            }
+            return httpClient;
+        }
+    }
 
     private static volatile boolean tamperDetected = false;
     private static volatile boolean checkComplete = false;
@@ -47,6 +57,15 @@ public final class JarIntegrityChecker {
      * Non-blocking: runs on a daemon thread via CompletableFuture.
      */
     public static void checkIntegrity() {
+        String runningVersion = NullTrace.getVersion();
+        // Only official release builds have a published checksum to compare against. Builds from
+        // a branch or a local build carry a non-release version and would always "fail".
+        if (runningVersion == null || runningVersion.contains("-")) {
+            NullTrace.LOGGER.debug("[NullTrace] Non-release version {}; skipping jar integrity check", runningVersion);
+            checkComplete = true;
+            return;
+        }
+
         CompletableFuture.runAsync(() -> {
             try {
                 // Step 1: Get jar path from FabricLoader
@@ -91,7 +110,7 @@ public final class JarIntegrityChecker {
                         .GET()
                         .build();
 
-                HttpResponse<String> response = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
+                HttpResponse<String> response = http().send(request, HttpResponse.BodyHandlers.ofString());
 
                 if (response.statusCode() == 404) {
                     // No release for this version — dev/unreleased build
@@ -129,7 +148,7 @@ public final class JarIntegrityChecker {
                         .header("User-Agent", "NullTrace-Mod/" + currentVersion)
                         .timeout(Duration.ofSeconds(10))
                         .GET().build();
-                HttpResponse<String> checksumResponse = HTTP_CLIENT.send(
+                HttpResponse<String> checksumResponse = http().send(
                         checksumRequest, HttpResponse.BodyHandlers.ofString());
                 if (checksumResponse.statusCode() != 200) {
                     NullTrace.LOGGER.debug("[NullTrace] Checksum asset returned status {}, skipping integrity check", checksumResponse.statusCode());

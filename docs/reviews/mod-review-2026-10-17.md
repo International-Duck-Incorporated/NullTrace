@@ -12,7 +12,7 @@ are marked 🧭.
 
 ## P0 — trust and correctness
 
-### 1. The CI "adversarial fixture" tests nothing about NullTrace
+### 1. The CI "adversarial fixture" tests nothing about NullTrace  — partly addressed
 
 `tests/adversarial_server.py` serves a hardcoded JSON list of probe *names*
 (`brand`, `channel`, `known-pack`, …) over HTTP, and `test_adversarial_server.py`
@@ -35,7 +35,7 @@ have caught the `probes > 0` warning bug immediately. Keep the Python fixture fo
 SSRF/redirect vectors only — there it is genuinely useful, because that code is
 HTTP-level and can be exercised without Minecraft.
 
-### 2. Update check and jar integrity bypass the player's proxy — and phone home on every launch
+### 2. Update check and jar integrity bypass the player's proxy — and phone home on every launch  — addressed
 
 `UpdateChecker` (`HttpClient.newBuilder()...`) and `JarIntegrityChecker` (same)
 build their own `HttpClient` with **no proxy**, and `NullTraceClient.onInitializeClient`
@@ -48,13 +48,14 @@ metadata) — from a *privacy mod*. Two outbound requests also add a startup del
 a failure mode (`UpdateScreen` on the multiplayer screen) for users on restricted
 networks.
 
-**Do:** (a) route both through the same proxy as the account code, ideally via one
-shared helper; (b) make update checks opt-in (or first-run prompt) instead of
-automatic, and keep the integrity check silent unless it fails; (c) add a
-"no telemetry / no outbound requests" switch that disables both, and say so in the
-README, because this is exactly the kind of claim the audience checks.
+**Status:** done for (a) and (c). `HttpClients.outbound(...)` is the single proxy-aware client
+factory, used by the update check, the integrity check and (through `Minecraft#getProxy()`) the
+account code; both startup checks are switchable under Advanced → Network, and the footer no longer
+claims "up to date" when the check is off. Still open: (b) — the checks remain on by default and no
+first-run prompt exists, so a player who never opens the config still makes two requests. README
+wording for the network disclosure is also still to do.
 
-### 3. Jar integrity: the alarm is louder than the evidence
+### 3. Jar integrity: the alarm is louder than the evidence  — addressed (wording)
 
 `JarIntegrityChecker` computes the running jar's SHA-256 and compares it against the
 `.sha256` asset attached to the matching GitLab release. The *strings* it then shows
@@ -73,14 +74,16 @@ Two problems.
   jar can delete the check; the expected digest is fetched over the same TLS path as
   the jar itself. It is a packaging-drift detector, not a security control.
 
-**Do:** soften the language to what it proves — "This jar is not the official release
-build for your Minecraft version" (matching the "verdict first, no incident framing"
-rule); never fire for dev/unreleased versions; add a "why?" panel that already exists
-(digest diff — good) and a "check again" button; and consider verifying a detached
-signature whose public key is embedded in the code, which at least forces an attacker
-to patch code rather than re-attach a checksum file.
+**Status:** wording and the dev-version skip are done: the screen now reads "This jar is not the
+official release build", says that repacked/branch/local builds explain it, and is skipped entirely
+when the running version is not a release (`2.0.3-...`). Stale translations of the old alarming text
+were dropped so the nine other locales fall back to the new English wording instead of claiming a
+compromise. Still open: the "check again" button and signature verification.
 
-### 4. Local-address guard: coverage gaps and a check-then-connect race
+**Remaining do:** consider verifying a detached signature whose public key is embedded in the code,
+which at least forces an attacker to patch code rather than re-attach a checksum file.
+
+### 4. Local-address guard: coverage gaps and a check-then-connect race  — gaps fixed, race open
 
 `LocalAddressUtil.isLocalAddress` uses `isAnyLocalAddress || isLoopbackAddress ||
 isSiteLocalAddress || isLinkLocalAddress`. Missing:
@@ -100,13 +103,18 @@ rebinding attacks" is stronger than the code. Note the blast radius is narrow: o
 `https://` a private-IP target fails certificate validation anyway, so the exploitable
 case is plain `http://` redirect hops — which is exactly where the fix is cheapest.
 
-**Do:** add the missing ranges (one `byte[]`-level helper for CGNAT + ULA); and for
+**Status:** every range in the table above is now rejected, the class moved to `src/main` so it is
+unit-tested (`LocalAddressUtilTest`, literal addresses only, no DNS), and IPv4-mapped forms are
+re-checked against the IPv4 ranges. The check-then-connect race is unchanged and now stated in the
+class javadoc instead of being implied away.
+
+**Remaining do:** for
 `http://` URLs, resolve once and pin the connection to the checked `InetAddress`
 (connect to the literal address with a manual `Host:` header) so check and connect
 cannot disagree. At minimum, document the limitation in the class javadoc instead of
 claiming protection that isn't there.
 
-### 5. `remainingExposure()` counts events, not exposure
+### 5. `remainingExposure()` counts events, not exposure  — addressed
 
 `AuditLedger.remainingExposure()` returns the number of ALLOW/WARN/LOG **events** in
 the bounded 2048-entry deque. A server that probes once per tick makes this number
@@ -114,9 +122,11 @@ climb to 2048 while nothing new is actually exposed, and the `/nulltrace audit` 
 (`Remaining exposure: %d`) inherits that. The redesigned warning screen no longer uses
 it (it derives visible areas from the policy), but the command still shows it.
 
-**Do:** count distinct surfaces with a non-BLOCK action for the current connection
-context, not events. Or rename it to what it is (`allowedEvents`) and add a per-surface
-summary next to it — the ledger already has `counts(PrivacyAction)`.
+**Status:** `AuditLedger.allowedSurfaceCount()` (distinct surfaces, cumulative) and
+`allowedSurfaces()` were added; `/nulltrace audit` uses the former. `remainingExposure()` is
+deprecated and documented as an event count, and — thanks to a test that failed while writing this —
+`count()`/`counts()` are now cumulative rather than window-capped, which fixes a second instance of
+the same class of bug.
 
 ### 6. Warning copy bug from the last patch (mine)
 

@@ -31,6 +31,7 @@ public final class NullTraceStrings {
     public static final String SECTION_RESTART_WARNING = "nulltrace.section.restartWarning";
     public static final String SECTION_DEBUG = "nulltrace.section.debug";
     public static final String SECTION_PROXY = "nulltrace.section.proxy";
+    public static final String SECTION_NETWORK = "nulltrace.section.network";
     public static final String ACCOUNT_CURRENT = "nulltrace.account.current";
     public static final String WHITELIST_SUFFIX_CHANNELS = "nulltrace.whitelist.suffix.channels";
 
@@ -236,6 +237,12 @@ public final class NullTraceStrings {
     public static final String BUTTON_RESET_DISABLED_TOOLTIP = "nulltrace.button.reset.disabled.tooltip";
     public static final String VERSION_TOOLTIP_OUTDATED = "nulltrace.version.tooltip.outdated";
     public static final String VERSION_TOOLTIP_UPTODATE = "nulltrace.version.tooltip.upToDate";
+    public static final String VERSION_TOOLTIP_DISABLED = "nulltrace.version.tooltip.disabled";
+
+    public static final String OPTION_CHECK_UPDATES = "nulltrace.option.checkUpdates";
+    public static final String OPTION_CHECK_UPDATES_TOOLTIP = "nulltrace.option.checkUpdates.tooltip";
+    public static final String OPTION_VERIFY_JAR = "nulltrace.option.verifyJar";
+    public static final String OPTION_VERIFY_JAR_TOOLTIP = "nulltrace.option.verifyJar.tooltip";
 
     public static final String TOOLTIP_ISOLATE_PACK_CACHE = "nulltrace.option.isolatePackCache.tooltip";
     public static final String TOOLTIP_BLOCK_LOCAL_PACK_URLS = "nulltrace.option.blockLocalPackUrls.tooltip";

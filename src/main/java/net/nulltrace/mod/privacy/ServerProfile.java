@@ -33,7 +33,11 @@ public final class ServerProfile {
     public void setAllowedChannels(Iterable<String> channels) {
         allowedChannels.clear();
         if (channels != null) for (String channel : channels) {
-            if (channel != null && !channel.isBlank()) allowedChannels.add(channel);
+            if (channel == null) continue;
+            // Trim: a channel id copied with surrounding whitespace must still match the id the
+            // connection reports, otherwise the whitelist entry silently does nothing.
+            String trimmed = channel.trim();
+            if (!trimmed.isEmpty()) allowedChannels.add(trimmed);
         }
     }
     public boolean normalizeClientInformation() { return normalizeClientInformation; }

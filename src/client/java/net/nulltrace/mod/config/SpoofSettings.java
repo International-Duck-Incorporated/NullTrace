@@ -156,6 +156,11 @@ public class SpoofSettings {
     private boolean blockServerCookies = true;
     private boolean blockServerTransfers = true;
     
+    // Startup network access. Both checks are useful and on by default, but a privacy tool
+    // must let the player say "no outbound requests", so both are user-controlled.
+    private boolean checkUpdates = true;
+    private boolean verifyJarIntegrity = true;
+
     // UI Settings
     private int buttonX = -1;
     private int buttonY = -1;
@@ -318,6 +323,14 @@ public class SpoofSettings {
     public boolean isTamperWarningDismissed() { return tamperWarningDismissed; }
     public void setTamperWarningDismissed(boolean dismissed) { this.tamperWarningDismissed = dismissed; }
 
+    /** Whether the mod may check CurseForge/GitLab for a newer release at startup. */
+    public boolean isCheckUpdates() { return checkUpdates; }
+    public void setCheckUpdates(boolean checkUpdates) { this.checkUpdates = checkUpdates; }
+
+    /** Whether the mod may compare the running jar against the published release checksum. */
+    public boolean isVerifyJarIntegrity() { return verifyJarIntegrity; }
+    public void setVerifyJarIntegrity(boolean verifyJarIntegrity) { this.verifyJarIntegrity = verifyJarIntegrity; }
+
     // Pre-connection privacy warning
     public WarningMode getWarningMode() { return warningMode; }
 
@@ -388,6 +401,8 @@ public class SpoofSettings {
         json.addProperty("tamperWarningDismissed", tamperWarningDismissed);
         json.addProperty("alertHintShown", alertHintShown);
         json.addProperty("warningMode", warningMode.name());
+        json.addProperty("checkUpdates", checkUpdates);
+        json.addProperty("verifyJarIntegrity", verifyJarIntegrity);
         JsonArray mutedServers = new JsonArray();
         for (String server : mutedWarningServers) {
             mutedServers.add(server);
@@ -491,6 +506,8 @@ public class SpoofSettings {
         if (json.has("skippedUpdateVersion")) s.skippedUpdateVersion = json.get("skippedUpdateVersion").getAsString();
         if (json.has("tamperWarningDismissed")) s.tamperWarningDismissed = json.get("tamperWarningDismissed").getAsBoolean();
         if (json.has("alertHintShown")) s.alertHintShown = json.get("alertHintShown").getAsBoolean();
+        if (json.has("checkUpdates")) s.checkUpdates = json.get("checkUpdates").getAsBoolean();
+        if (json.has("verifyJarIntegrity")) s.verifyJarIntegrity = json.get("verifyJarIntegrity").getAsBoolean();
         if (json.has("warningMode")) {
             try { s.warningMode = WarningMode.valueOf(json.get("warningMode").getAsString()); }
             catch (IllegalArgumentException ignored) { s.warningMode = WarningMode.EXPOSURE_ONLY; }

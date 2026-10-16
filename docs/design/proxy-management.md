@@ -93,10 +93,9 @@ java -cp gson.jar:/tmp/ptc ProxyProbeHarness <httpPort> <socksPort> <deadPort>
 fixture `docs/reviews/mod-review-2026-10-17.md` (item 1) asked for — the existing Python
 "adversarial fixture" does not touch NullTrace code at all.
 
-CI note: this harness is not wired into `.gitlab-ci.yml` yet because it needs a JDK and a
-`gson.jar` on the classpath; wiring it as a `script:` step in the existing `test` stage is a
-one-liner (`javac` + `java`, no Gradle involved). Left out of this patch so the pipeline
-change is a deliberate, reviewable edit rather than a side effect.
+It is wired into CI as `proxy_probe_harness` (a `javac` + `java` step; the fake endpoints are Java,
+so the job needs no Python). `policy_tests` now runs the JUnit suite on both 1.21.11 and 26.3 instead
+of 26.3 only.
 
 ## Follow-ups
 

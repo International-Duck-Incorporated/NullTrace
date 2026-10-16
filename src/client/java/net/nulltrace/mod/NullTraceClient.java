@@ -48,11 +48,20 @@ public class NullTraceClient implements ClientModInitializer {
 		NullTraceCommand.register();
 		AccountManager.getInstance(); // Load saved accounts
 
-		// Check for mod updates (non-blocking)
-		UpdateChecker.checkForUpdate();
+		// Both checks are outbound HTTP requests. They are proxy-aware and user-controlled
+		// (Advanced tab -> Network): a privacy tool should never make network calls the player
+		// cannot see or switch off.
+		if (NullTraceConfig.getInstance().getSettings().isCheckUpdates()) {
+			UpdateChecker.checkForUpdate(); // non-blocking
+		} else {
+			NullTrace.LOGGER.debug("[NullTrace] Startup update check disabled by configuration");
+		}
 
-		// Check jar integrity against the GitLab release checksum (non-blocking)
-		JarIntegrityChecker.checkIntegrity();
+		if (NullTraceConfig.getInstance().getSettings().isVerifyJarIntegrity()) {
+			JarIntegrityChecker.checkIntegrity(); // non-blocking
+		} else {
+			NullTrace.LOGGER.debug("[NullTrace] Jar integrity check disabled by configuration");
+		}
 
 		// Scan for registered channels after all mods have initialized
 		ClientLifecycleEvents.CLIENT_STARTED.register(client -> {

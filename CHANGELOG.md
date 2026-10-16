@@ -5,6 +5,7 @@ All notable changes to NullTrace are documented here.
 ## [Unreleased]
 
 ### Added
+- Added unit tests for the warning decision (`WarningAssessment`), the per-server policy profiles, the audit ledger and the local-address guard, plus a standalone proxy harness (54 expectations) that runs in CI. The previous "adversarial fixture" asserted only that a hardcoded list of probe names was stable and never executed NullTrace code.
 - Added proxy management on a new **Advanced** config tab: paste an endpoint, keep a list, select the active one, reorder or remove entries, and probe the selected endpoint for reachability (`docs/design/proxy-management.md`).
 - Added the central `ConnectionContext` / `PrivacyPolicy` / `AuditLedger` model with explainable `ALLOW`, `BLOCK`, `WARN`, and `LOG` decisions.
 - Added `/nulltrace audit` and per-server `STANDARD`, `STRICT`, `MAXIMUM_PRIVACY`, and `CUSTOM` profiles.
@@ -22,12 +23,18 @@ All notable changes to NullTrace are documented here.
 - Routed account HTTP requests through the same explicit Minecraft proxy setting as gameplay.
 
 ### Changed
+- The startup update check and jar-integrity check now use the configured proxy instead of a direct connection, and both can be switched off (Advanced → Network). Previously a player who routed the game through a proxy still had their real address sent to GitLab and the CurseForge metadata API on every launch.
+- The jar-integrity screen no longer claims the client may be "compromised". It reports packaging drift in plain language ("this jar is not the official release build"), explains what that usually means, and is skipped automatically for non-release versions.
+- The pre-connection warning's decision logic moved into a Minecraft-free class so it is covered by unit tests rather than only reachable from a running client.
 - Replaced the "Play through proxy" boolean with a tri-state proxy mode (`Direct` / `Launcher` / `Selected`). Configurations written by older versions migrate automatically (`true` → `Launcher`), and the proxy list lives outside `SpoofSettings` so Reset cannot delete saved endpoints.
 - Updated the roadmap and release pipeline to describe the GitLab repository and all four supported targets.
 - Rewrote the README with official CurseForge and GitLab downloads, current configuration behavior, build/test instructions, and update-check network disclosure.
 - The pre-connection warning now derives its rows from the effective per-server `PrivacyPolicy` instead of raw counters, so the screen can no longer disagree with what the protections actually do.
 
 ### Fixed
+- Whitelist channel entries are trimmed before being stored, so an id pasted with surrounding whitespace no longer silently fails to match at runtime.
+- The audit ledger's counters (`/nulltrace audit`) are cumulative instead of being read out of the bounded 2048-event window, so a flooding server no longer makes every reported number freeze at 2048. `remainingExposure()` now counts allowed events and is documented as such; `allowedSurfaceCount()` reports distinct exposed surfaces.
+- The local/private address guard now also rejects IPv6 unique-local (`fc00::/7`), CGNAT (`100.64.0.0/10`), `0.0.0.0/8`, multicast/reserved space and IPv4-mapped IPv6 forms such as `::ffff:127.0.0.1`.
 - Prevented older published releases from triggering update notifications or marking the configuration version label as outdated.
 - The pre-connection warning no longer interrupts a join that has no remaining exposure (`WarningMode.EXPOSURE_ONLY`, the new default; `WarningMode.ALWAYS` restores the always-show behaviour for users who want a receipt every time).
 - The pre-connection warning no longer claims installed mods are "potentially identifiable" when it only counted installed mods, and no longer presents reassuring numbers ("0 exposed", "remaining exposure: 0") in the same voice as actual exposure.

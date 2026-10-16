@@ -2,6 +2,7 @@ package net.nulltrace.mod.config;
 
 import net.fabricmc.loader.api.FabricLoader;
 import net.nulltrace.mod.NullTrace;
+import net.nulltrace.mod.util.HttpClients;
 import net.nulltrace.mod.update.UpdateMetadata;
 import net.nulltrace.mod.update.UpdateMetadata.Release;
 
@@ -25,10 +26,22 @@ public final class UpdateChecker {
     private static final String GITLAB_API_URL = "https://gitlab.com/api/v4/projects/international-duck-incorporated%2FNullTrace/releases/permalink/latest";
     private static final String FALLBACK_RELEASE_URL = UpdateMetadata.CURSEFORGE_PROJECT_URL + "/files/all";
 
-    private static final HttpClient HTTP_CLIENT = HttpClient.newBuilder()
-            .connectTimeout(Duration.ofSeconds(10))
-            .followRedirects(HttpClient.Redirect.NORMAL)
-            .build();
+    /**
+     * Built lazily so it can be created after the config (and therefore the proxy choice) is
+     * loaded, and so a proxy change applies without restarting the game.
+     */
+    private static volatile HttpClient httpClient;
+
+    private static HttpClient http() {
+        HttpClient existing = httpClient;
+        if (existing != null) return existing;
+        synchronized (UpdateChecker.class) {
+            if (httpClient == null) {
+                httpClient = HttpClients.outbound(Duration.ofSeconds(10), true);
+            }
+            return httpClient;
+        }
+    }
 
     private static final AtomicBoolean CHECK_STARTED = new AtomicBoolean();
     private static volatile CheckResult result = new CheckResult(null, false, false);
@@ -87,7 +100,7 @@ public final class UpdateChecker {
                         .timeout(Duration.ofSeconds(10))
                         .GET()
                         .build();
-                HttpResponse<String> response = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
+                HttpResponse<String> response = http().send(request, HttpResponse.BodyHandlers.ofString());
                 if (response.statusCode() == 200) return parse.apply(response.body());
                 NullTrace.LOGGER.debug("[NullTrace] {} API returned status {}", source, response.statusCode());
             } catch (InterruptedException e) {

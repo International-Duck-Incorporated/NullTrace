@@ -7,62 +7,18 @@ import net.nulltrace.mod.tracking.ModRegistry;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
- * Computes the pre-connection warning without opening a network connection.
+ * Gathers the counters and settings for the pre-connection warning, without opening a network
+ * connection.
  *
- * <p>Everything here is phrased as "what will this server actually receive?" and is
- * derived from the effective {@link PrivacyPolicy} for the target server instead of
- * from raw internal counters. The consent screen and the enforcement layer therefore
- * cannot disagree: if the policy blocks a surface, the screen reports it as hidden.
- *
- * <p>The screen itself owns all wording (via {@code NullTraceStrings}); this class
- * only answers yes/no questions and carries the counters for the details panel.
+ * <p>The decision logic itself lives in {@link WarningAssessment} (Minecraft-free, unit-tested);
+ * this class only collects inputs from {@link ModRegistry} and {@link NullTraceConfig} and hands
+ * them back as an immutable {@link Summary}. The screen owns all wording via
+ * {@code NullTraceStrings}, so this class never formats user-visible text.
  */
 public final class ConnectionWarning {
     private static final AtomicBoolean ALLOW_NEXT = new AtomicBoolean(false);
 
     private ConnectionWarning() {}
-
-    /** How loud the warning has to be. */
-    public enum Severity {
-        /** Nothing reported reaches the server. */
-        OK,
-        /** Only tracking-shaped surfaces (pack requests, cookies, transfers) are visible. */
-        NOTICE,
-        /** At least one identity surface (brand, channels, packs, probes) is visible. */
-        EXPOSED
-    }
-
-    /**
-     * A user-facing grouping of one or more {@link PrivacySurface}s.
-     *
-     * <p>Declaration order is display order on the consent screen. Grouping keeps the
-     * screen readable: a player understands "mod channels", not ten policy surfaces.
-     */
-    public enum Area {
-        CLIENT_BRAND(PrivacySurface.CLIENT_BRAND),
-        MOD_CHANNELS(PrivacySurface.MOD_CHANNEL),
-        PACK_IDENTIFIERS(PrivacySurface.KNOWN_PACK),
-        TEXT_PROBES(PrivacySurface.TRANSLATION_PROBE, PrivacySurface.KEYBIND_PROBE),
-        CLIENT_INFO(PrivacySurface.CLIENT_INFORMATION),
-        PACK_REQUESTS(PrivacySurface.RESOURCE_PACK, PrivacySurface.LOCAL_REQUEST),
-        TRACKING(PrivacySurface.SERVER_COOKIE, PrivacySurface.SERVER_TRANSFER);
-
-        private final PrivacySurface[] surfaces;
-
-        Area(PrivacySurface... surfaces) {
-            this.surfaces = surfaces;
-        }
-
-        public PrivacySurface[] surfaces() {
-            return surfaces.clone();
-        }
-
-        /** Identity surfaces answer "which client is this?" — the ones players care about. */
-        public boolean isIdentity() {
-            return this == CLIENT_BRAND || this == MOD_CHANNELS || this == PACK_IDENTIFIERS
-                    || this == TEXT_PROBES || this == CLIENT_INFO;
-        }
-    }
 
     public static void allowNextConnection() { ALLOW_NEXT.set(true); }
 
@@ -158,41 +114,25 @@ public final class ConnectionWarning {
         /** Host-only key used by server profiles. */
         public String serverKey() { return serverKey; }
 
+        /** The effective policy this summary was derived from. */
+        public PrivacyPolicy policy() { return policy; }
+
         /** True when the server will receive anything from this area. */
-        public boolean isVisible(Area area) {
-            for (PrivacySurface surface : area.surfaces()) {
-                if (policy.actionFor(surface) != PrivacyAction.BLOCK) return true;
-            }
-            return false;
+        public boolean isVisible(WarningAssessment.Area area) {
+            return WarningAssessment.isVisible(policy, area);
         }
 
         public int visibleAreaCount() {
-            int count = 0;
-            for (Area area : Area.values()) {
-                if (isVisible(area)) count++;
-            }
-            return count;
+            return WarningAssessment.visibleAreaCount(policy);
         }
 
-        private Severity computeSeverity() {
-            Severity severity = Severity.OK;
-            for (Area area : Area.values()) {
-                if (!isVisible(area)) continue;
-                if (area.isIdentity()) return Severity.EXPOSED;
-                severity = Severity.NOTICE;
-            }
-            return severity;
+        public WarningAssessment.Severity severity() {
+            return WarningAssessment.severity(policy);
         }
 
-        public Severity severity() { return computeSeverity(); }
-
-        /**
-         * Whether the consent screen must be shown. An all-clear connection is not
-         * interrupted — interrupting players with "0 exposure" screens is what teaches
-         * them to click through the warnings that do matter.
-         */
+        /** See {@link WarningAssessment#shouldWarn}. */
         public boolean shouldWarn() {
-            return !muted && (alwaysWarn || severity() != Severity.OK);
+            return WarningAssessment.shouldWarn(severity(), alwaysWarn, muted);
         }
 
         /**

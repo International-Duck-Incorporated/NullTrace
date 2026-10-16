@@ -44,11 +44,38 @@ build:
     expire_in: 30 days
 
 policy_tests:
+  # Run the JUnit suite on both ends of the supported range: 1.21.11 is the newest obfuscated
+  # target, 26.3 the newest unobfuscated one. Test code that only compiles on one of them used to
+  # go unnoticed because only 26.3 was ever built here.
+  stage: test
+  image: eclipse-temurin:25-jdk
+  parallel:
+    matrix:
+      - MC_VERSION: "1.21.11"
+      - MC_VERSION: "26.3"
+  script:
+    - chmod +x ./gradlew
+    - ./gradlew --no-daemon ":$MC_VERSION:test" --stacktrace
+
+proxy_probe_harness:
+  # Standalone JDK-only harness for the proxy feature (tests/proxy/README.md). It starts its own
+  # fake HTTP CONNECT / SOCKS5 endpoints, so it needs no Minecraft and no Gradle.
   stage: test
   image: eclipse-temurin:25-jdk
   script:
-    - chmod +x ./gradlew
-    - ./gradlew --no-daemon :26.3:test --stacktrace
+    - curl -sSL -o /tmp/gson.jar https://repo1.maven.org/maven2/com/google/code/gson/gson/2.11.0/gson-2.11.0.jar
+    - test -s /tmp/gson.jar
+    - mkdir -p /tmp/proxy-harness
+    - >
+      javac -encoding UTF-8 -d /tmp/proxy-harness -cp /tmp/gson.jar
+      tests/proxy/stub/net/nulltrace/mod/NullTrace.java
+      src/client/java/net/nulltrace/mod/lang/NullTraceStrings.java
+      src/client/java/net/nulltrace/mod/proxy/ProxyEntry.java
+      src/client/java/net/nulltrace/mod/proxy/ProxySettings.java
+      src/client/java/net/nulltrace/mod/proxy/ProxyTester.java
+      tests/proxy/FakeProxyServers.java
+      tests/proxy/ProxyProbeHarness.java
+    - java -cp /tmp/gson.jar:/tmp/proxy-harness ProxyProbeHarness
 
 adversarial_fixture:
   stage: test

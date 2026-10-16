@@ -204,7 +204,7 @@ public class NullTraceCommand {
         long ledgerBlocked = ledger.count(PrivacyAction.BLOCK);
         long ledgerAllowed = ledger.count(PrivacyAction.ALLOW);
         long ledgerWarnings = ledger.count(PrivacyAction.WARN);
-        int remaining = ledger.remainingExposure() + allowedChannels
+        int remaining = ledger.allowedSurfaceCount() + allowedChannels
                 + (config.shouldSpoofBrand() ? 0 : 1)
                 + (knownPacks - blockedKnownPacks)
                 + (translations - blockedTranslations);

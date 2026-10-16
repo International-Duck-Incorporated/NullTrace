@@ -1,0 +1,152 @@
+package net.nulltrace.mod.util;
+
+import java.net.Inet4Address;
+import java.net.Inet6Address;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
+import java.util.Locale;
+
+/**
+ * Local/private address detection for resource-pack URLs, and the current server address.
+ *
+ * <p>Lives in the common source set because it is pure JDK code: that keeps it unit-testable
+ * (see {@code LocalAddressUtilTest}) instead of only reachable from a running client.
+ *
+ * <p>Checks an explicit list of ranges rather than relying on
+ * {@link InetAddress#isSiteLocalAddress()} alone, which only covers the three RFC 1918 blocks and
+ * the deprecated IPv6 site-local prefix. The following are treated as local/private:
+ *
+ * <table>
+ *   <caption>Ranges rejected</caption>
+ *   <tr><td>{@code 0.0.0.0/8}</td><td>"this network" — only the single address 0.0.0.0 is matched by {@code isAnyLocalAddress()}</td></tr>
+ *   <tr><td>{@code 127.0.0.0/8}, {@code ::1}</td><td>loopback</td></tr>
+ *   <tr><td>{@code 10/8}, {@code 172.16/12}, {@code 192.168/16}</td><td>RFC 1918 (LAN)</td></tr>
+ *   <tr><td>{@code 169.254/16}, {@code fe80::/10}</td><td>link-local</td></tr>
+ *   <tr><td>{@code 100.64.0.0/10}</td><td>CGNAT / carrier NAT — common on VPS and cloud networks</td></tr>
+ *   <tr><td>{@code 224/4}, {@code ff00::/8}</td><td>multicast</td></tr>
+ *   <tr><td>{@code fc00::/7}</td><td>IPv6 unique-local (UA); {@code isSiteLocalAddress()} misses it</td></tr>
+ *   <tr><td>{@code ::ffff:a.b.c.d}</td><td>IPv4-mapped IPv6 — re-checked against the IPv4 ranges</td></tr>
+ * </table>
+ *
+ * <p><b>Known limitation.</b> This resolves a host name and returns; the HTTP stack resolves it
+ * again when it connects, so a DNS answer with a very short TTL can in principle pass this check
+ * as public and connect as loopback (DNS rebinding). Over {@code https://} the connection fails
+ * certificate validation anyway, so the realistic vector is a plain-{@code http://} redirect hop.
+ * Pinning the connection to the checked address is the fix and is not implemented here.
+ */
+public class LocalAddressUtil {
+
+    /**
+     * Current server address, set on connect, cleared on disconnect.
+     * Used to skip local address blocking when already connected to a local server.
+     */
+    public static volatile String serverAddress = null;
+
+    /** Convenience: any resolution of {@code host} being local/private makes the host local. */
+    public static boolean isLocalAddress(String host) throws UnknownHostException {
+        if (host == null || host.isBlank()) return false;
+        for (InetAddress address : InetAddress.getAllByName(host)) {
+            if (isLocalAddress(address)) return true;
+        }
+        return false;
+    }
+
+    /**
+     * True when a single resolved address belongs to a local, private, carrier-NAT, loopback,
+     * link-local or multicast range.
+     */
+    public static boolean isLocalAddress(InetAddress address) {
+        if (address == null) return false;
+        if (address.isAnyLocalAddress()
+                || address.isLoopbackAddress()
+                || address.isSiteLocalAddress()
+                || address.isLinkLocalAddress()
+                || address.isMulticastAddress()) {
+            return true;
+        }
+
+        byte[] bytes = address.getAddress();
+        if (bytes.length == 4) {
+            return isLocalIpv4(bytes, 0);
+        }
+        if (bytes.length == 16) {
+            int first = bytes[0] & 0xFF;
+            // IPv6 unique-local fc00::/7
+            if ((first & 0xFE) == 0xFC) return true;
+            // IPv4-mapped (::ffff:a.b.c.d) and IPv4-compatible (::a.b.c.d) forms.
+            boolean mapped = true;
+            for (int i = 0; i < 10; i++) {
+                if (bytes[i] != 0) {
+                    mapped = false;
+                    break;
+                }
+            }
+            if (mapped
+                    && ((bytes[10] == (byte) 0xFF && bytes[11] == (byte) 0xFF)
+                        || (bytes[10] == 0 && bytes[11] == 0))) {
+                return isLocalIpv4(bytes, 12);
+            }
+        }
+        return false;
+    }
+
+    /** {@code a.b.c.d} starting at {@code offset} in {@code bytes}. */
+    private static boolean isLocalIpv4(byte[] bytes, int offset) {
+        int a = bytes[offset] & 0xFF;
+        int b = bytes[offset + 1] & 0xFF;
+        int c = bytes[offset + 2] & 0xFF;
+        int d = bytes[offset + 3] & 0xFF;
+
+        // 0.0.0.0/8 "this network"
+        if (a == 0) return true;
+        // 10/8
+        if (a == 10) return true;
+        // 100.64.0.0/10 CGNAT
+        if (a == 100 && b >= 64 && b <= 127) return true;
+        // 127/8 loopback (also covered by isLoopbackAddress when parsed, not when raw)
+        if (a == 127) return true;
+        // 169.254/16 link-local
+        if (a == 169 && b == 254) return true;
+        // 172.16/12
+        if (a == 172 && b >= 16 && b <= 31) return true;
+        // 192.168/16
+        if (a == 192 && b == 168) return true;
+        // 198.18.0.0/15 benchmarking
+        if (a == 198 && (b == 18 || b == 19)) return true;
+        // 224/4 multicast and 240/4 reserved
+        if (a >= 224) return true;
+        // Defensive: a zero netmask-ish address is never a valid public target.
+        return a == 255 && b == 255 && c == 255 && d == 255;
+    }
+
+    /** Normalizes a host string for logging and profile keys (lowercase, no trailing dot). */
+    public static String normalizeHost(String host) {
+        if (host == null) return "";
+        String normalized = host.trim().toLowerCase(Locale.ROOT);
+        while (normalized.endsWith(".")) {
+            normalized = normalized.substring(0, normalized.length() - 1);
+        }
+        return normalized;
+    }
+
+    /** True when the string parses as a literal IPv4/IPv6 address (no DNS involved). */
+    public static boolean isLiteralAddress(String host) {
+        if (host == null || host.isBlank()) return false;
+        String text = host.trim();
+        if (text.startsWith("[") && text.endsWith("]")) {
+            text = text.substring(1, text.length() - 1);
+        }
+        if (text.isEmpty()) return false;
+        // InetAddress.getByName resolves names, so only accept inputs that cannot be host names.
+        boolean looksV4 = text.chars().allMatch(ch -> (ch >= '0' && ch <= '9') || ch == '.');
+        boolean looksV6 = text.indexOf(':') >= 0
+                && text.chars().allMatch(ch -> Character.digit(ch, 16) >= 0 || ch == ':' || ch == '.');
+        if (!looksV4 && !looksV6) return false;
+        try {
+            InetAddress address = InetAddress.getByName(text);
+            return address instanceof Inet4Address || address instanceof Inet6Address;
+        } catch (UnknownHostException e) {
+            return false;
+        }
+    }
+}

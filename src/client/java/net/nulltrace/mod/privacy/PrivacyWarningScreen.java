@@ -78,12 +78,12 @@ public final class PrivacyWarningScreen extends Screen {
 
     @Override
     protected void init() {
-        ConnectionWarning.Severity severity = summary.severity();
+        WarningAssessment.Severity severity = summary.severity();
 
         int contentWidth = Math.min(this.width - 40, MAX_CONTENT_WIDTH);
         int left = (this.width - contentWidth) / 2;
 
-        int rows = ConnectionWarning.Area.values().length;
+        int rows = WarningAssessment.Area.values().length;
         String[] details = detailsExpanded ? detailsLines() : new String[0];
         int contentHeight = LINE * 2 + 6 + LINE + 10 + rows * LINE
                 + (detailsExpanded ? 8 + LINE + details.length * LINE : 0);
@@ -95,12 +95,12 @@ public final class PrivacyWarningScreen extends Screen {
         y += LINE;
         addText(NullTraceLang.tr(NullTraceStrings.WARNING_SERVER, summary.server()), left, y);
         y += LINE + 6;
-        addText(NullTraceLang.tr(severity == ConnectionWarning.Severity.OK
+        addText(NullTraceLang.tr(severity == WarningAssessment.Severity.OK
                 ? NullTraceStrings.WARNING_REASSURANCE_OK : NullTraceStrings.WARNING_REASSURANCE), left, y);
         y += LINE + 10;
 
         // What the server can see, one line per area.
-        for (ConnectionWarning.Area area : ConnectionWarning.Area.values()) {
+        for (WarningAssessment.Area area : WarningAssessment.Area.values()) {
             addText(NullTraceLang.tr(areaLabelKey(area)), left + 6, y);
             String status = statusText(area, summary.isVisible(area));
             addText(status, left + contentWidth - 6 - this.font.width(status), y);
@@ -122,10 +122,10 @@ public final class PrivacyWarningScreen extends Screen {
 
     // ------------------------------------------------------------------ actions
 
-    private void layoutActions(ConnectionWarning.Severity severity) {
+    private void layoutActions(WarningAssessment.Severity severity) {
         int mainY = this.height - 66;
         int secondY = this.height - 40;
-        boolean allClear = severity == ConnectionWarning.Severity.OK;
+        boolean allClear = severity == WarningAssessment.Severity.OK;
 
         List<Button> main = new ArrayList<>();
         main.add(button(NullTraceStrings.WARNING_BUTTON_BACK, NullTraceStrings.WARNING_BUTTON_BACK_TOOLTIP,
@@ -208,7 +208,7 @@ public final class PrivacyWarningScreen extends Screen {
 
     // ------------------------------------------------------------------ text
 
-    private static String severityKey(ConnectionWarning.Severity severity) {
+    private static String severityKey(WarningAssessment.Severity severity) {
         switch (severity) {
             case EXPOSED: return NullTraceStrings.WARNING_HEADLINE_EXPOSED;
             case NOTICE: return NullTraceStrings.WARNING_HEADLINE_NOTICE;
@@ -216,7 +216,7 @@ public final class PrivacyWarningScreen extends Screen {
         }
     }
 
-    private static String areaLabelKey(ConnectionWarning.Area area) {
+    private static String areaLabelKey(WarningAssessment.Area area) {
         switch (area) {
             case CLIENT_BRAND: return NullTraceStrings.WARNING_AREA_BRAND;
             case MOD_CHANNELS: return NullTraceStrings.WARNING_AREA_CHANNELS;
@@ -229,7 +229,7 @@ public final class PrivacyWarningScreen extends Screen {
     }
 
     /** One short verdict per row. Counts are passed only where the copy uses them. */
-    private String statusText(ConnectionWarning.Area area, boolean visible) {
+    private String statusText(WarningAssessment.Area area, boolean visible) {
         switch (area) {
             case CLIENT_BRAND:
                 // "protected" for the brand means replaced, not omitted.
@@ -252,7 +252,7 @@ public final class PrivacyWarningScreen extends Screen {
         }
     }
 
-    private static String statusVisibleKey(ConnectionWarning.Area area) {
+    private static String statusVisibleKey(WarningAssessment.Area area) {
         switch (area) {
             case CLIENT_BRAND: return NullTraceStrings.WARNING_STATUS_BRAND_VISIBLE;
             case PACK_IDENTIFIERS: return NullTraceStrings.WARNING_STATUS_PACK_IDS_VISIBLE;
@@ -262,7 +262,7 @@ public final class PrivacyWarningScreen extends Screen {
         }
     }
 
-    private static String statusHiddenKey(ConnectionWarning.Area area) {
+    private static String statusHiddenKey(WarningAssessment.Area area) {
         switch (area) {
             case CLIENT_BRAND: return NullTraceStrings.WARNING_STATUS_BRAND_HIDDEN;
             case PACK_IDENTIFIERS: return NullTraceStrings.WARNING_STATUS_PACK_IDS_HIDDEN;
