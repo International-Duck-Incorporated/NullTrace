@@ -41,6 +41,11 @@ def knownPacksMixinEntry = hasKnownPacksManager ? '\n\t\t"KnownPacksManagerMixin
 def hasPayloadTypeRegistry = isAtLeast(minecraft_version.toString(), "1.20.5")
 def payloadTypeRegistryMixinEntry = hasPayloadTypeRegistry ? '\n\t\t"PayloadTypeRegistryImplMixin",\n\t\t"AbstractChanneledNetworkAddonMixin",' : ''
 
+// Mixin refmaps only exist for obfuscated targets: on unobfuscated (26.x) targets Loom
+// generates none, and a declared-but-missing "refmap" key makes Mixin log
+// "Reference map '...' could not be read" on every user's startup.
+def mixinRefmapEntry = isUnobfuscated ? '' : '\n\t"refmap": "client-nulltrace.refmap.json",'
+
 // Apply the correct Loom plugin variant per version target:
 // - net.fabricmc.fabric-loom (non-remap) for unobfuscated MC 26.1+
 // - fabric-loom (legacy/remap) for obfuscated MC <=1.21.11
@@ -145,6 +150,7 @@ tasks.withType(ProcessResources).configureEach {
     inputs.property("java_version", javaVersion.toString())
     inputs.property("known_packs_mixin_entry", knownPacksMixinEntry)
     inputs.property("payload_type_registry_mixin_entry", payloadTypeRegistryMixinEntry)
+    inputs.property("mixin_refmap_entry", mixinRefmapEntry)
     filesMatching(["fabric.mod.json", "nulltrace.client.mixins.json"]) {
         expand(
             "version": project.version,
@@ -152,7 +158,8 @@ tasks.withType(ProcessResources).configureEach {
             "mixin_compat_level": mixinCompatLevel,
             "java_version": javaVersion.toString(),
             "known_packs_mixin_entry": knownPacksMixinEntry,
-            "payload_type_registry_mixin_entry": payloadTypeRegistryMixinEntry
+            "payload_type_registry_mixin_entry": payloadTypeRegistryMixinEntry,
+            "mixin_refmap_entry": mixinRefmapEntry
         )
     }
 }

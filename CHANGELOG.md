@@ -15,6 +15,7 @@ All notable changes to NullTrace are documented here.
 - Added CI dependency reporting, JAR inspection, SHA-256 checksum generation, and checksum release assets.
 - Added CurseForge update checks through the public CFWidget metadata API, alongside GitLab, with compatible stable Fabric release selection and independent source failure handling.
 - Added regression tests for release metadata, Minecraft-version filtering, and semantic version comparison.
+- Release inspection (`security_audit`) now fails the pipeline when a mixin config names a refmap file the jar does not contain — the packaging drift that made the 26.x builds log a Mixin warning on every startup.
 
 ### Security
 - Removed the offline ("cracked") account path. The account switcher now only swaps in authenticated Microsoft sessions, and stored entries written by older versions with `type: "cracked"` are dropped instead of restored. Do not publish JARs built from older revisions for CurseForge or any other distribution.
@@ -32,6 +33,8 @@ All notable changes to NullTrace are documented here.
 - The pre-connection warning now derives its rows from the effective per-server `PrivacyPolicy` instead of raw counters, so the screen can no longer disagree with what the protections actually do.
 
 ### Fixed
+- The 26.x builds no longer declare a Mixin refmap that the jar does not contain. Minecraft 26.1+ ships unobfuscated, so Loom generates no refmap for those targets and the leftover declaration made Mixin log `Reference map 'client-nulltrace.refmap.json' for nulltrace.client.mixins.json could not be read ... this may be a bug` on every 26.x startup. In obfuscated targets (1.21.11) the declaration is kept and the refmap is still shipped.
+- The `proxy_probe_harness` CI job fetched its gson dependency with `curl`, which the `eclipse-temurin` image does not provide, so the job could not have passed in the pipeline even though the harness itself is green. The jar is now fetched with the JDK itself (single-file source execution), with no extra packages.
 - Whitelist channel entries are trimmed before being stored, so an id pasted with surrounding whitespace no longer silently fails to match at runtime.
 - The audit ledger's counters (`/nulltrace audit`) are cumulative instead of being read out of the bounded 2048-event window, so a flooding server no longer makes every reported number freeze at 2048. `remainingExposure()` now counts allowed events and is documented as such; `allowedSurfaceCount()` reports distinct exposed surfaces.
 - The local/private address guard now also rejects IPv6 unique-local (`fc00::/7`), CGNAT (`100.64.0.0/10`), `0.0.0.0/8`, multicast/reserved space and IPv4-mapped IPv6 forms such as `::ffff:127.0.0.1`.

@@ -1,7 +1,6 @@
 {
 	"required": true,
-	"package": "net.nulltrace.mod.mixin.client",
-	"refmap": "client-nulltrace.refmap.json",
+	"package": "net.nulltrace.mod.mixin.client",${mixin_refmap_entry}
 	"compatibilityLevel": "${mixin_compat_level}",
 	"client": [
 		"ClientBrandRetrieverMixin",

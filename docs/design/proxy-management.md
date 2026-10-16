@@ -82,15 +82,20 @@ round-trip and the probes against real sockets (a fake HTTP `CONNECT` proxy and 
 SOCKS5 server), including the failure paths:
 
 ```bash
-python3 tests/proxy/fake_proxies.py &            # prints {"http":..., "socks":..., "dead":...}
-javac -cp gson.jar -d /tmp/ptc \
+javac -encoding UTF-8 -d /tmp/proxy-harness -cp gson.jar \
+  tests/proxy/stub/net/nulltrace/mod/NullTrace.java \
   src/client/java/net/nulltrace/mod/lang/NullTraceStrings.java \
-  src/client/java/net/nulltrace/mod/proxy/*.java tests/proxy/ProxyProbeHarness.java
-java -cp gson.jar:/tmp/ptc ProxyProbeHarness <httpPort> <socksPort> <deadPort>
+  src/client/java/net/nulltrace/mod/proxy/ProxyEntry.java \
+  src/client/java/net/nulltrace/mod/proxy/ProxySettings.java \
+  src/client/java/net/nulltrace/mod/proxy/ProxyTester.java \
+  tests/proxy/FakeProxyServers.java \
+  tests/proxy/ProxyProbeHarness.java
+java -cp gson.jar:/tmp/proxy-harness ProxyProbeHarness
 ```
 
-38 checks pass, 37 of which are pure logic and one per live protocol. This is the kind of
-fixture `docs/reviews/mod-review-2026-10-17.md` (item 1) asked for — the existing Python
+54 checks pass — no ports to pass in, because the harness starts its own endpoints
+(`tests/proxy/README.md`). This is the kind of fixture
+`docs/reviews/mod-review-2026-10-17.md` (item 1) asked for — the older Python
 "adversarial fixture" does not touch NullTrace code at all.
 
 It is wired into CI as `proxy_probe_harness` (a `javac` + `java` step; the fake endpoints are Java,
@@ -111,7 +116,6 @@ of 26.3 only.
    is the only place credentials can actually be applied.
 3. **Per-server proxy override.** `ServerProfile` already models per-server policy; a
    "route this server through X" field is the natural extension once (1) exists.
-4. **Wire the harness into CI** (see above).
-5. **Rotate/leak note:** if a proxy is combined with the pack-cache isolation, the proxy's
+4. **Rotate/leak note:** if a proxy is combined with the pack-cache isolation, the proxy's
    exit IP becomes another per-connection signal — worth a line in the audit screen when a
    proxy is active.

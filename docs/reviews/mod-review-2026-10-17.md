@@ -321,6 +321,46 @@ translated locale files still contain the four now-unused offline-account keys.
 
 ---
 
+## Build verification round — 2026-10-17 (continuation)
+
+Everything below was executed against the released source, not reasoned about:
+Gradle 9.6.1, Temurin JDK 25, `--no-daemon`, all four Stonecutter targets.
+
+| Check | Result |
+| --- | --- |
+| `:1.21.11:build`, `:26.1:build`, `:26.2:build`, `:26.3:build` | all **BUILD SUCCESSFUL** |
+| JUnit suite, per target | **85 tests, 0 failures, 0 skipped** (AuditLedger 8, LocalAddressUtil 7, PolicyRegression 10, PrivacyPolicy 3, ServerProfileJson 7, UpdateMetadata 41, WarningAssessment 9) |
+| Release jars | 536–546 KB each, 156 classes, no bundled Minecraft classes |
+| `proxy_probe_harness` (run verbatim from `.gitlab-ci.yml`) | **ALL 54 CHECKS PASSED** |
+| `adversarial_fixture` (`python -m unittest discover -s tests`) | passes |
+| `security_audit` releases checks (fabric.mod.json, LICENSE, no token resources, sha256) | passes for all four jars |
+
+Findings that only exist because the build was actually run:
+
+1. **Packaging: dangling refmap declaration on every 26.x build (fixed).** The shared
+   `nulltrace.client.mixins.json` declared `"refmap": "client-nulltrace.refmap.json"`.
+   Loom only generates a refmap for obfuscated targets, so 26.1/26.2/26.3 shipped the
+   declaration without the file. Mixin then logs, on every user's startup,
+   `Reference map 'client-nulltrace.refmap.json' for nulltrace.client.mixins.json could not
+   be read. If this is a development environment you can ignore this message … this may be a
+   bug` — on the mod whose whole pitch is "nothing hidden". The key is now templated
+   (`${mixin_refmap_entry}`): obfuscated targets keep the declaration and ship the 18 KB
+   refmap, unobfuscated targets carry no refmap key at all. `security_audit` gained a
+   permanent guard (a declared refmap that the jar does not contain fails the pipeline), and
+   the guard was negative-tested: re-injecting the declaration into a built 26.3 jar makes it
+   exit 1 with a precise message.
+2. **CI: the harness job could not have run (fixed).** `proxy_probe_harness` fetched gson
+   with `curl` in an `eclipse-temurin:25-jdk` job; that image ships no curl/wget/apt (only the
+   alpine `publish` job adds curl). The harness would have failed before compiling anything.
+   It now fetches the jar with the JDK itself via single-file source execution, verified to
+   produce byte-identical bytes (sha256 `57928d6e…`) and run green as extracted from the YAML.
+3. **Remaining from this round:** the DNS resolve/connect race in the local-address guard is
+   still only documented, not closed (see item 4), and no end-to-end in-game run has been
+   performed here — the client was never launched, so mixin application, the warning screen and
+   the proxy screens are verified by compilation, jar inspection and unit tests only.
+
+---
+
 ## Suggested sequencing
 
 | Order | Work | Why first |

@@ -63,7 +63,25 @@ proxy_probe_harness:
   stage: test
   image: eclipse-temurin:25-jdk
   script:
-    - curl -sSL -o /tmp/gson.jar https://repo1.maven.org/maven2/com/google/code/gson/gson/2.11.0/gson-2.11.0.jar
+    # eclipse-temurin ships no curl/wget/apt, so fetch gson with the JDK itself
+    # (single-file source execution). Same bytes as the curl download.
+    - |
+      cat > /tmp/Fetch.java <<'EOF'
+      import java.io.InputStream;
+      import java.net.URI;
+      import java.nio.file.Files;
+      import java.nio.file.Path;
+      import java.nio.file.StandardCopyOption;
+
+      class Fetch {
+          public static void main(String[] args) throws Exception {
+              try (InputStream in = URI.create(args[0]).toURL().openStream()) {
+                  Files.copy(in, Path.of(args[1]), StandardCopyOption.REPLACE_EXISTING);
+              }
+          }
+      }
+      EOF
+    - java /tmp/Fetch.java https://repo1.maven.org/maven2/com/google/code/gson/gson/2.11.0/gson-2.11.0.jar /tmp/gson.jar
     - test -s /tmp/gson.jar
     - mkdir -p /tmp/proxy-harness
     - >
@@ -98,13 +116,28 @@ security_audit:
       set -eu
       for JAR in release/*.jar; do
         echo "Inspecting $JAR"
-        jar tf "$JAR" | grep -q 'fabric.mod.json'
-        jar tf "$JAR" | grep -q 'LICENSE'
-        if jar tf "$JAR" | grep -E '(^|/)accessToken$|(^|/)refreshToken$'; then
+        jar tf "$JAR" > /tmp/listing.txt
+        grep -q 'fabric.mod.json' /tmp/listing.txt
+        grep -q 'LICENSE' /tmp/listing.txt
+        if grep -E '(^|/)accessToken$|(^|/)refreshToken$' /tmp/listing.txt; then
           echo "Unexpected plaintext token resource in $JAR" >&2
           exit 1
         fi
         sha256sum --check "$JAR.sha256"
+
+        # A mixin config that names a refmap must actually ship it. On unobfuscated
+        # versions (26.x) Loom generates no refmap, so a leftover "refmap" key is
+        # invisible here but shows up as a startup warning for every user.
+        rm -rf /tmp/jarroot && mkdir -p /tmp/jarroot
+        ( cd /tmp/jarroot && jar xf "$OLDPWD/$JAR" )
+        for CFG in $(cd /tmp/jarroot && find . -name '*mixins.json'); do
+          REFMAP="$(sed -n 's/.*"refmap"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "/tmp/jarroot/$CFG")"
+          test -n "$REFMAP" || continue
+          if [ ! -f "/tmp/jarroot/$REFMAP" ]; then
+            echo "$CFG in $JAR declares refmap '$REFMAP' but the jar does not contain it" >&2
+            exit 1
+          fi
+        done
       done
   artifacts:
     when: always
