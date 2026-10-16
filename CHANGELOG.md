@@ -7,7 +7,7 @@ All notable changes to NullTrace are documented here.
 ### Added
 - Added the central `ConnectionContext` / `PrivacyPolicy` / `AuditLedger` model with explainable `ALLOW`, `BLOCK`, `WARN`, and `LOG` decisions.
 - Added `/nulltrace audit` and per-server `STANDARD`, `STRICT`, `MAXIMUM_PRIVACY`, and `CUSTOM` profiles.
-- Added a pre-connection privacy warning with Cancel and Connect Anyway actions.
+- Added a pre-connection privacy warning. It now reports each surface as shown/hidden in plain language, offers `Connect` and `Protect & connect`, a details panel with the raw counters, a settings shortcut, and a per-server warning mute (see `docs/design/privacy-warning-redesign.md`).
 - Added configurable client-information normalization for language, view distance, chat visibility, and particles.
 - Added an adversarial probe fixture and policy regression tests.
 - Added CI dependency reporting, JAR inspection, SHA-256 checksum generation, and checksum release assets.
@@ -22,9 +22,14 @@ All notable changes to NullTrace are documented here.
 ### Changed
 - Updated the roadmap and release pipeline to describe the GitLab repository and all four supported targets.
 - Rewrote the README with official CurseForge and GitLab downloads, current configuration behavior, build/test instructions, and update-check network disclosure.
+- The pre-connection warning now derives its rows from the effective per-server `PrivacyPolicy` instead of raw counters, so the screen can no longer disagree with what the protections actually do.
 
 ### Fixed
 - Prevented older published releases from triggering update notifications or marking the configuration version label as outdated.
+- The pre-connection warning no longer interrupts a join that has no remaining exposure (`WarningMode.EXPOSURE_ONLY`, the new default; `WarningMode.ALWAYS` restores the always-show behaviour for users who want a receipt every time).
+- The pre-connection warning no longer claims installed mods are "potentially identifiable" when it only counted installed mods, and no longer presents reassuring numbers ("0 exposed", "remaining exposure: 0") in the same voice as actual exposure.
+- The pre-connection warning resolves its strings through the private `NullTraceLang` table, so the other bundled locales are used and server resource packs cannot rewrite the text.
+- Escape on the pre-connection warning now returns to the server list instead of dropping the player on an unrelated screen.
 
 ## [2.0.2] - 2026-09-26
 

@@ -282,4 +282,66 @@ public final class NullTraceStrings {
     // Chat-signing mode tooltips
     public static final String CHATSIGNING_SIGN_TOOLTIP = "nulltrace.chatSigning.sign.tooltip";
     public static final String CHATSIGNING_OFF_TOOLTIP = "nulltrace.chatSigning.off.tooltip";
+
+    // Pre-connection privacy warning (see docs/design/privacy-warning-redesign.md).
+    // Copy rules: verdict first, plain language over counters, no alarm words
+    // ("exposure detected", "exposed", "leaked") for information the player can act on.
+    public static final String WARNING_TITLE = "nulltrace.warning.title";
+    public static final String WARNING_HEADLINE_EXPOSED = "nulltrace.warning.headline.exposed";
+    public static final String WARNING_HEADLINE_NOTICE = "nulltrace.warning.headline.notice";
+    public static final String WARNING_HEADLINE_OK = "nulltrace.warning.headline.ok";
+    public static final String WARNING_SERVER = "nulltrace.warning.server";
+    public static final String WARNING_REASSURANCE = "nulltrace.warning.reassurance";
+    public static final String WARNING_REASSURANCE_OK = "nulltrace.warning.reassurance.ok";
+
+    // Row labels — one per ConnectionWarning.Area, in declaration order.
+    public static final String WARNING_AREA_BRAND = "nulltrace.warning.area.brand";
+    public static final String WARNING_AREA_CHANNELS = "nulltrace.warning.area.channels";
+    public static final String WARNING_AREA_PACK_IDS = "nulltrace.warning.area.packIds";
+    public static final String WARNING_AREA_TEXT_PROBES = "nulltrace.warning.area.textProbes";
+    public static final String WARNING_AREA_CLIENT_INFO = "nulltrace.warning.area.clientInfo";
+    public static final String WARNING_AREA_PACK_REQUESTS = "nulltrace.warning.area.packRequests";
+    public static final String WARNING_AREA_TRACKING = "nulltrace.warning.area.tracking";
+
+    // Row verdicts — §a when the server receives nothing from that area, §c when it does.
+    public static final String WARNING_STATUS_BRAND_VISIBLE = "nulltrace.warning.status.brand.visible";
+    public static final String WARNING_STATUS_BRAND_HIDDEN = "nulltrace.warning.status.brand.hidden";
+    public static final String WARNING_STATUS_CHANNELS_VISIBLE = "nulltrace.warning.status.channels.visible";
+    public static final String WARNING_STATUS_CHANNELS_HIDDEN = "nulltrace.warning.status.channels.hidden";
+    public static final String WARNING_STATUS_PACK_IDS_VISIBLE = "nulltrace.warning.status.packIds.visible";
+    public static final String WARNING_STATUS_PACK_IDS_HIDDEN = "nulltrace.warning.status.packIds.hidden";
+    public static final String WARNING_STATUS_PROBES_VISIBLE = "nulltrace.warning.status.probes.visible";
+    public static final String WARNING_STATUS_PROBES_HIDDEN = "nulltrace.warning.status.probes.hidden";
+    public static final String WARNING_STATUS_CLIENT_INFO_VISIBLE = "nulltrace.warning.status.clientInfo.visible";
+    public static final String WARNING_STATUS_CLIENT_INFO_HIDDEN = "nulltrace.warning.status.clientInfo.hidden";
+    public static final String WARNING_STATUS_PACK_REQUESTS_VISIBLE = "nulltrace.warning.status.packRequests.visible";
+    public static final String WARNING_STATUS_PACK_REQUESTS_HIDDEN = "nulltrace.warning.status.packRequests.hidden";
+    public static final String WARNING_STATUS_TRACKING_VISIBLE = "nulltrace.warning.status.tracking.visible";
+    public static final String WARNING_STATUS_TRACKING_HIDDEN = "nulltrace.warning.status.tracking.hidden";
+
+    // Details panel — where the raw counters moved.
+    public static final String WARNING_DETAILS_HEADER = "nulltrace.warning.details.header";
+    public static final String WARNING_DETAIL_MODS = "nulltrace.warning.detail.mods";
+    public static final String WARNING_DETAIL_CHANNELS = "nulltrace.warning.detail.channels";
+    public static final String WARNING_DETAIL_KEYS = "nulltrace.warning.detail.keys";
+    public static final String WARNING_DETAIL_KEYBINDS = "nulltrace.warning.detail.keybinds";
+    public static final String WARNING_DETAIL_PACK_IDS = "nulltrace.warning.detail.packIds";
+    public static final String WARNING_DETAIL_SHADERS = "nulltrace.warning.detail.shaders";
+    public static final String WARNING_DETAIL_EXPOSURE = "nulltrace.warning.detail.exposure";
+    public static final String WARNING_DETAIL_AUDIT = "nulltrace.warning.detail.audit";
+
+    public static final String WARNING_BUTTON_BACK = "nulltrace.warning.button.back";
+    public static final String WARNING_BUTTON_BACK_TOOLTIP = "nulltrace.warning.button.back.tooltip";
+    public static final String WARNING_BUTTON_CONNECT = "nulltrace.warning.button.connect";
+    public static final String WARNING_BUTTON_CONNECT_TOOLTIP = "nulltrace.warning.button.connect.tooltip";
+    public static final String WARNING_BUTTON_PROTECT = "nulltrace.warning.button.protect";
+    public static final String WARNING_BUTTON_PROTECT_TOOLTIP = "nulltrace.warning.button.protect.tooltip";
+    public static final String WARNING_BUTTON_DETAILS_SHOW = "nulltrace.warning.button.details.show";
+    public static final String WARNING_BUTTON_DETAILS_HIDE = "nulltrace.warning.button.details.hide";
+    public static final String WARNING_BUTTON_DETAILS_TOOLTIP = "nulltrace.warning.button.details.tooltip";
+    public static final String WARNING_BUTTON_MUTE_ON = "nulltrace.warning.button.mute.on";
+    public static final String WARNING_BUTTON_MUTE_OFF = "nulltrace.warning.button.mute.off";
+    public static final String WARNING_BUTTON_MUTE_TOOLTIP = "nulltrace.warning.button.mute.tooltip";
+    public static final String WARNING_BUTTON_SETTINGS = "nulltrace.warning.button.settings";
+    public static final String WARNING_BUTTON_SETTINGS_TOOLTIP = "nulltrace.warning.button.settings.tooltip";
 }

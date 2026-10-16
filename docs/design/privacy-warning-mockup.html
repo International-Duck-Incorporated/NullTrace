@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>NullTrace — pre-connection warning redesign</title>
+<style>
+  :root {
+    --mc-green: #55ff55;
+    --mc-red: #ff5555;
+    --mc-yellow: #ffff55;
+    --mc-gray: #aaaaaa;
+    --mc-darkgray: #555555;
+    --panel: rgba(16, 16, 16, 0.86);
+    --panel-border: #3a3a3a;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 28px 22px 60px;
+    background: #0d0f12;
+    color: #e6e6e6;
+    font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace;
+    font-size: 13px;
+    line-height: 1.5;
+  }
+  h1 { font-size: 20px; margin: 0 0 4px; letter-spacing: .5px; }
+  h2 { font-size: 14px; margin: 34px 0 10px; color: var(--mc-yellow); text-transform: uppercase; letter-spacing: 1px; }
+  h3 { font-size: 13px; margin: 0 0 8px; color: #fff; }
+  p.lede { color: var(--mc-gray); margin: 0 0 6px; max-width: 900px; }
+  .wrap { max-width: 1180px; margin: 0 auto; }
+  .cols { display: flex; gap: 24px; flex-wrap: wrap; align-items: flex-start; }
+
+  /* ------- Minecraft-ish chrome ------- */
+  .mc-screen {
+    position: relative;
+    width: 660px;
+    height: 372px;
+    border: 2px solid #000;
+    overflow: hidden;
+    flex: 0 0 auto;
+    box-shadow: 0 10px 30px rgba(0,0,0,.6);
+  }
+  .sky {
+    position: absolute; inset: -20px;
+    background:
+      radial-gradient(120% 90% at 20% 108%, #6b5a35 0%, #2b2718 55%, #101010 100%),
+      linear-gradient(160deg, #1b2130 0%, #0b0c10 70%);
+    filter: blur(5px) brightness(.62);
+  }
+  .blobs { position: absolute; inset: 0; filter: blur(3px); opacity: .5; }
+  .blobs i { position: absolute; display: block; background: #000; }
+  .content { position: absolute; inset: 0; padding: 24px 22px; }
+  .btn-row { position: absolute; left: 0; right: 0; display: flex; gap: 8px; justify-content: center; }
+  .mc-btn {
+    display: inline-flex; align-items: center; justify-content: center;
+    min-width: 90px; padding: 5px 12px;
+    background: linear-gradient(#9a9a9a, #6e6e6e);
+    border: 2px solid #000;
+    box-shadow: inset 2px 2px 0 rgba(255,255,255,.45), inset -2px -2px 0 rgba(0,0,0,.45);
+    color: #fff; text-shadow: 1px 1px 0 #3a3a3a;
+    font: inherit; cursor: default; white-space: nowrap;
+  }
+  .mc-btn.primary {
+    background: linear-gradient(#7fb37f, #4f7a4f);
+    box-shadow: inset 2px 2px 0 rgba(255,255,255,.4), inset -2px -2px 0 rgba(0,0,0,.45);
+  }
+  .mc-btn.toggle { min-width: 0; padding: 4px 10px; font-size: 12px; }
+  .line { display: flex; justify-content: space-between; gap: 12px; }
+  .label { color: var(--mc-gray); }
+  .good { color: var(--mc-green); }
+  .bad  { color: var(--mc-red); }
+  .warn { color: var(--mc-yellow); }
+  .dim  { color: var(--mc-darkgray); }
+  .panel-bg { position: absolute; inset: 18px 16px 96px; background: var(--panel); border: 1px solid var(--panel-border); }
+  .kv { margin: 2px 0; }
+
+  /* ------- annotation list ------- */
+  .notes { flex: 1 1 320px; min-width: 300px; }
+  .notes ol { padding-left: 20px; margin: 6px 0 0; }
+  .notes li { margin-bottom: 9px; color: #cfcfcf; }
+  .notes b { color: #fff; }
+  .tag {
+    display: inline-block; padding: 0 6px; margin-right: 6px;
+    background: #4a1f1f; color: #ff9a9a; border: 1px solid #7a2f2f; font-size: 11px;
+  }
+  .tag.good { background: #1f3f22; color: #9ce09c; border-color: #2f6b34; }
+  .card { background: #14171c; border: 1px solid #262b33; padding: 16px; margin-top: 14px; }
+  table { border-collapse: collapse; width: 100%; margin-top: 8px; }
+  th, td { text-align: left; padding: 6px 10px; border-bottom: 1px solid #242832; vertical-align: top; }
+  th { color: var(--mc-gray); font-weight: normal; text-transform: uppercase; font-size: 11px; letter-spacing: .6px; }
+  td.old { color: #ff9a9a; }
+  td.new { color: #9ce09c; }
+  code { background: #1c2027; padding: 1px 5px; border: 1px solid #2b313a; }
+  .rule { display: flex; gap: 10px; align-items: baseline; margin: 6px 0; }
+  .rule span.n { color: var(--mc-yellow); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>NullTrace — pre-connection warning: redesign</h1>
+  <p class="lede">Mockup companion to <code>docs/design/privacy-warning-redesign.md</code>. Left: what ships today. Right and below: the proposed screen in its three states, plus the copy changes. Everything here is MOCK-UP ONLY — no game code involved.</p>
+
+  <h2>1 · Today (the screen in the screenshot)</h2>
+  <div class="cols">
+    <div class="mc-screen">
+      <div class="sky"></div>
+      <div class="blobs">
+        <i style="left:2%;top:58%;width:26%;height:34%"></i>
+        <i style="left:30%;top:62%;width:18%;height:30%"></i>
+        <i style="left:52%;top:66%;width:22%;height:26%"></i>
+        <i style="left:78%;top:60%;width:20%;height:35%"></i>
+      </div>
+      <div class="content">
+        <div class="warn" style="font-weight:bold;margin-bottom:16px">Privacy exposure detected</div>
+        <div class="kv">Server: play.enchantedmc.com:25565</div>
+        <div class="kv">9 installed mods are potentially identifiable</div>
+        <div class="kv">0 network channels will be exposed</div>
+        <div class="kv">8250 fingerprint surfaces are tracked</div>
+        <div class="kv">Remaining exposure: 0</div>
+      </div>
+      <div class="btn-row" style="bottom:22px">
+        <span class="mc-btn" style="width:150px">Cancel</span>
+        <span class="mc-btn" style="width:160px">Connect Anyway</span>
+      </div>
+    </div>
+
+    <div class="notes">
+      <ol>
+        <li><b>“Privacy exposure detected”</b> is incident language. The player's actual state is fine, so the headline is a lie in the alarm direction.</li>
+        <li><b>Contradicts itself.</b> “0 network channels will be exposed” + “Remaining exposure: 0” + a blocking screen + “Connect Anyway” = the mod does not believe its own numbers. <span class="tag">logic</span> <code>shouldWarn()</code> fires on <code>probes &gt; 0</code>, not on exposure.</li>
+        <li><b>Good news phrased as bad news.</b> “0 … will be exposed” and “8250 surfaces are tracked” are printed in the same voice, weight and colour as the bad rows.</li>
+        <li><b>8250 is meaningless.</b> It is an internal sum of translation keys and known-pack strings. No player can act on it.</li>
+        <li><b>“Connect Anyway”.</b> “Anyway” tells the player that joining is the wrong/risky choice while being the button they actually want.</li>
+        <li><b>“9 installed mods are potentially identifiable”</b> — the count is <code>getAllMods().size()</code>, not mods that actually leak anything. False alarm by construction.</li>
+        <li><b>No way out.</b> No settings link, no “why”, no per-server “don't ask me again”, and English only — the other 9 locales never reach the highest-stakes screen. <span class="tag">i18n</span> plus <span class="tag">Esc</span> is unhandled: <code>onClose()</code> is not overridden.</li>
+      </ol>
+    </div>
+  </div>
+
+  <h2>2 · Proposed — state “actionable” (something is visible)</h2>
+  <div class="cols">
+    <div class="mc-screen">
+      <div class="sky"></div>
+      <div class="blobs">
+        <i style="left:2%;top:58%;width:26%;height:34%"></i>
+        <i style="left:30%;top:62%;width:18%;height:30%"></i>
+        <i style="left:52%;top:66%;width:22%;height:26%"></i>
+        <i style="left:78%;top:60%;width:20%;height:35%"></i>
+      </div>
+      <div class="panel-bg"></div>
+      <div class="content" style="padding:22px 26px">
+        <div class="warn" style="font-weight:bold">This server can identify parts of your client</div>
+        <div class="dim">Server: play.enchantedmc.com:25565</div>
+        <div class="dim" style="margin:6px 0 10px">Nothing has been sent yet. NullTrace can block these before you join.</div>
+
+        <div class="line"><span class="label">Client brand</span><span class="bad">sent</span></div>
+        <div class="line"><span class="label">Mod network channels</span><span class="bad">7 of 12 sent</span></div>
+        <div class="line"><span class="label">Mod pack identifiers</span><span class="good">not sent</span></div>
+        <div class="line"><span class="label">Server text &amp; key probes</span><span class="good">blocked</span></div>
+        <div class="line"><span class="label">Client info (language, view, chat)</span><span class="good">normalized</span></div>
+        <div class="line"><span class="label">Resource pack requests</span><span class="good">filtered</span></div>
+        <div class="line"><span class="label">Cookies &amp; server transfers</span><span class="good">blocked</span></div>
+      </div>
+      <div class="btn-row" style="bottom:40px">
+        <span class="mc-btn">Back</span>
+        <span class="mc-btn">Connect</span>
+        <span class="mc-btn primary">Protect &amp; connect</span>
+      </div>
+      <div class="btn-row" style="bottom:12px">
+        <span class="mc-btn toggle">Privacy settings</span>
+        <span class="mc-btn toggle">Show details</span>
+        <span class="mc-btn toggle">Warn here: ON</span>
+      </div>
+    </div>
+
+    <div class="notes card">
+      <h3>What changed</h3>
+      <div class="rule"><span class="n">▸</span><span><b>Verdict first.</b> One actionable sentence, then the server name. No "exposure detected".</span></div>
+      <div class="rule"><span class="n">▸</span><span><b>Rows, not numbers.</b> Every line answers “does this server get it, yes or no?” in words. Green = hidden, red = visible, so good and bad news can no longer look the same.</span></div>
+      <div class="rule"><span class="n">▸</span><span><b>The counts moved behind “Show details”.</b> The old screen's five numbers are all still there, one click away, where they inform instead of alarm.</span></div>
+      <div class="rule"><span class="n">▸</span><span><b>Two equal exits.</b> “Connect” and “Protect &amp; connect” are both one click. “Protect” writes the strict server profile for this server (audited) and joins — the fix is now a button instead of a homework assignment.</span></div>
+      <div class="rule"><span class="n">▸</span><span><b>No dead ends.</b> Settings (opens on the profile for this server), details, and a per-server “Warn here: ON/OFF” toggle.</span></div>
+      <div class="rule"><span class="n">▸</span><span><b>Nothing has been sent yet</b> is stated explicitly. That single sentence is what stops the pants-shitting.</span></div>
+    </div>
+  </div>
+
+  <h2>3 · Proposed — state “quiet notice” with details expanded</h2>
+  <div class="cols">
+    <div class="mc-screen">
+      <div class="sky"></div>
+      <div class="blobs">
+        <i style="left:2%;top:58%;width:26%;height:34%"></i>
+        <i style="left:30%;top:62%;width:18%;height:30%"></i>
+        <i style="left:52%;top:66%;width:22%;height:26%"></i>
+        <i style="left:78%;top:60%;width:20%;height:35%"></i>
+      </div>
+      <div class="panel-bg" style="inset:12px 16px 130px"></div>
+      <div class="content" style="padding:14px 26px">
+        <div class="warn" style="font-weight:bold">A few details will be shared with this server</div>
+        <div class="dim">Server: play.enchantedmc.com:25565</div>
+        <div class="dim" style="margin:4px 0 8px">Nothing has been sent yet. NullTrace can block these before you join.</div>
+
+        <div class="line"><span class="label">Client brand</span><span class="good">not sent</span></div>
+        <div class="line"><span class="label">Mod network channels</span><span class="good">0 of 12 sent</span></div>
+        <div class="line"><span class="label">Mod pack identifiers</span><span class="good">not sent</span></div>
+        <div class="line"><span class="label">Server text &amp; key probes</span><span class="good">blocked</span></div>
+        <div class="line"><span class="label">Client info (language, view, chat)</span><span class="good">normalized</span></div>
+        <div class="line"><span class="label">Resource pack requests</span><span class="bad">allowed</span></div>
+        <div class="line"><span class="label">Cookies &amp; server transfers</span><span class="good">blocked</span></div>
+
+        <div style="margin-top:8px;color:#fff">Details</div>
+        <div class="dim">Mods installed: 9</div>
+        <div class="dim">Mod channels sent: 0 of 12</div>
+        <div class="dim">Mod text keys tracked: 8250 &nbsp;·&nbsp; Keybinds protected: 214</div>
+        <div class="dim">Remaining exposure: 1 &nbsp;·&nbsp; Full log: /nulltrace audit</div>
+      </div>
+      <div class="btn-row" style="bottom:40px">
+        <span class="mc-btn">Back</span>
+        <span class="mc-btn">Connect</span>
+        <span class="mc-btn primary">Protect &amp; connect</span>
+      </div>
+      <div class="btn-row" style="bottom:12px">
+        <span class="mc-btn toggle">Privacy settings</span>
+        <span class="mc-btn toggle">Hide details</span>
+        <span class="mc-btn toggle">Warn here: ON</span>
+      </div>
+    </div>
+
+    <div class="notes card">
+      <h3>Notes</h3>
+      <div class="rule"><span class="n">▸</span><span>Severity is derived from the effective <code>PrivacyPolicy</code> per surface — the screen can no longer disagree with what the mod actually does.</span></div>
+      <div class="rule"><span class="n">▸</span><span>Yellow verdict = “actionable, not an emergency”. Red is reserved for the jar-integrity screen, which really is an incident.</span></div>
+      <div class="rule"><span class="n">▸</span><span>A single visible non-identity surface (here: pack requests allowed) produces the notice state, since it is tracking-shaped rather than identity-shaped.</span></div>
+    </div>
+  </div>
+
+  <h2>4 · Proposed — state “all clear” (only when always-warn is enabled)</h2>
+  <div class="cols">
+    <div class="mc-screen" style="height:300px">
+      <div class="sky"></div>
+      <div class="blobs">
+        <i style="left:2%;top:58%;width:26%;height:34%"></i>
+        <i style="left:30%;top:62%;width:18%;height:30%"></i>
+        <i style="left:52%;top:66%;width:22%;height:26%"></i>
+        <i style="left:78%;top:60%;width:20%;height:35%"></i>
+      </div>
+      <div class="panel-bg" style="inset:28px 16px 70px"></div>
+      <div class="content" style="padding:36px 26px">
+        <div class="good" style="font-weight:bold">Nothing about your client is being shared</div>
+        <div class="dim">Server: play.enchantedmc.com:25565</div>
+        <div class="dim" style="margin:6px 0 12px">NullTrace blocks the surfaces this server can probe.</div>
+        <div class="line"><span class="label">Client brand</span><span class="good">not sent</span></div>
+        <div class="line"><span class="label">Mod network channels</span><span class="good">0 of 12 sent</span></div>
+        <div class="line"><span class="label">Mod pack identifiers</span><span class="good">not sent</span></div>
+        <div class="line"><span class="label">Server text &amp; key probes</span><span class="good">blocked</span></div>
+        <div class="line"><span class="label">Client info (language, view, chat)</span><span class="good">normalized</span></div>
+        <div class="line"><span class="label">Resource pack requests</span><span class="good">filtered</span></div>
+        <div class="line"><span class="label">Cookies &amp; server transfers</span><span class="good">blocked</span></div>
+      </div>
+      <div class="btn-row" style="bottom:40px">
+        <span class="mc-btn">Back</span>
+        <span class="mc-btn primary">Connect</span>
+      </div>
+      <div class="btn-row" style="bottom:12px">
+        <span class="mc-btn toggle">Privacy settings</span>
+        <span class="mc-btn toggle">Show details</span>
+        <span class="mc-btn toggle">Warn here: ON</span>
+      </div>
+    </div>
+
+    <div class="notes card">
+      <h3>Why this state normally never appears</h3>
+      <div class="rule"><span class="n">▸</span><span>With <code>WarningMode.EXPOSURE_ONLY</code> (default) the all-clear joins straight through: no screen, no click, no “are we in trouble?” pause for a faction-server player who just wants to play.</span></div>
+      <div class="rule"><span class="n">▸</span><span>Your own screenshot state becomes this: exposure 0 → the screen stops appearing at all. That is the fix for "crying wolf".</span></div>
+      <div class="rule"><span class="n">▸</span><span><code>WarningMode.ALWAYS</code> exists for testing and for users who want a receipt every time.</span></div>
+    </div>
+  </div>
+
+  <h2>5 · Copy changes at a glance</h2>
+  <table>
+    <thead><tr><th style="width:38%">Today</th><th style="width:38%">Proposed</th><th>Why</th></tr></thead>
+    <tbody>
+      <tr><td class="old">Privacy exposure detected</td><td class="new">This server can identify parts of your client</td><td>Same information, no incident framing.</td></tr>
+      <tr><td class="old">9 installed mods are potentially identifiable</td><td class="new">Details → Mods installed: 9</td><td>The count was never “identifiable”; it was just installed mods.</td></tr>
+      <tr><td class="old">0 network channels will be exposed</td><td class="new">Mod network channels &nbsp;—&nbsp; 0 of 12 sent</td><td>Same number, honest framing, green when it is good news.</td></tr>
+      <tr><td class="old">8250 fingerprint surfaces are tracked</td><td class="new">Server text &amp; key probes &nbsp;—&nbsp; blocked</td><td>The player cares about the state, not the counter. Counter moved to details.</td></tr>
+      <tr><td class="old">Remaining exposure: 0</td><td class="new">(screen not shown)</td><td>Zero exposure should not interrupt anyone.</td></tr>
+      <tr><td class="old">Cancel</td><td class="new">Back</td><td>It returns to the server list; nothing was cancelled.</td></tr>
+      <tr><td class="old">Connect Anyway</td><td class="new">Connect &nbsp;/&nbsp; Protect &amp; connect</td><td>Stop telling players that playing is the wrong choice.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="card">
+    <h3>Implemented in the repo (this workspace)</h3>
+    <p class="lede" style="margin-bottom:6px"><code>ConnectionWarning</code> (policy-derived summary + severity + mute), <code>PrivacyWarningScreen</code> (redesigned), <code>NullTraceStrings</code> + <code>en_us.json</code> (all wording, so the other locales fall back instead of showing nothing), <code>SpoofSettings</code> (warning mode, per-server mute), <code>NullTraceConfig</code> (per-server profile setter).</p>
+    <p class="lede">Java was syntax-checked with a standalone parser only; a full <code>./gradlew :26.2:build</code> needs a JDK 25 and the Minecraft/Fabric artifacts, which were not available here.</p>
+  </div>
+</div>
+</body>
+</html>

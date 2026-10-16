@@ -80,7 +80,21 @@ public class SpoofSettings {
         DEFAULT,
         FULL
     }
-    
+
+    /**
+     * When the pre-connection privacy warning is shown.
+     *
+     * <p>{@code EXPOSURE_ONLY} interrupts a join only when the server will actually
+     * receive something. Showing an all-clear consent screen trains players to click
+     * through the ones that matter, so it is not the default.
+     */
+    public enum WarningMode {
+        /** Only warn when at least one surface reaches the server. Default. */
+        EXPOSURE_ONLY,
+        /** Always show the pre-connection summary, including when exposure is zero. */
+        ALWAYS
+    }
+
     // Brand spoofing — when true, the client advertises a vanilla brand and blocks
     // ALL outbound custom payloads. When false, the natural Fabric brand passes
     // through and channels are filtered via the Whitelist tab (Block All / Auto /
@@ -146,6 +160,12 @@ public class SpoofSettings {
 
     // One-time hints (persisted, never shown again)
     private boolean alertHintShown = false;
+
+    // Pre-connection privacy warning
+    private WarningMode warningMode = WarningMode.EXPOSURE_ONLY;
+    // Servers (host-only keys) where the player chose "Warn here: OFF". Muting only
+    // skips the prompt: every decision is still evaluated and recorded in the ledger.
+    private Set<String> mutedWarningServers = new HashSet<>();
     
     // Whitelist settings
     private WhitelistMode whitelistMode = WhitelistMode.AUTO;
@@ -292,6 +312,33 @@ public class SpoofSettings {
     public boolean isTamperWarningDismissed() { return tamperWarningDismissed; }
     public void setTamperWarningDismissed(boolean dismissed) { this.tamperWarningDismissed = dismissed; }
 
+    // Pre-connection privacy warning
+    public WarningMode getWarningMode() { return warningMode; }
+
+    public void setWarningMode(WarningMode mode) {
+        this.warningMode = mode != null ? mode : WarningMode.EXPOSURE_ONLY;
+    }
+
+    /**
+     * Whether the pre-connection prompt is muted for a server. The key is normalized
+     * the same way server profiles are, so "Example.com:25566" and a profile entry
+     * for "example.com" agree.
+     */
+    public boolean isWarningMuted(String server) {
+        return mutedWarningServers.contains(NullTraceConfig.normalizeAddress(server));
+    }
+
+    public void setWarningMuted(String server, boolean muted) {
+        String key = NullTraceConfig.normalizeAddress(server);
+        if (muted) {
+            mutedWarningServers.add(key);
+        } else {
+            mutedWarningServers.remove(key);
+        }
+    }
+
+    public Set<String> getMutedWarningServers() { return mutedWarningServers; }
+
     public String getEffectiveBrand() {
         return spoofAsVanilla ? VANILLA : FABRIC;
     }
@@ -334,6 +381,12 @@ public class SpoofSettings {
         json.addProperty("skippedUpdateVersion", skippedUpdateVersion);
         json.addProperty("tamperWarningDismissed", tamperWarningDismissed);
         json.addProperty("alertHintShown", alertHintShown);
+        json.addProperty("warningMode", warningMode.name());
+        JsonArray mutedServers = new JsonArray();
+        for (String server : mutedWarningServers) {
+            mutedServers.add(server);
+        }
+        json.add("mutedWarningServers", mutedServers);
 
         // Whitelist settings
         json.addProperty("whitelistMode", whitelistMode.name());
@@ -432,6 +485,19 @@ public class SpoofSettings {
         if (json.has("skippedUpdateVersion")) s.skippedUpdateVersion = json.get("skippedUpdateVersion").getAsString();
         if (json.has("tamperWarningDismissed")) s.tamperWarningDismissed = json.get("tamperWarningDismissed").getAsBoolean();
         if (json.has("alertHintShown")) s.alertHintShown = json.get("alertHintShown").getAsBoolean();
+        if (json.has("warningMode")) {
+            try { s.warningMode = WarningMode.valueOf(json.get("warningMode").getAsString()); }
+            catch (IllegalArgumentException ignored) { s.warningMode = WarningMode.EXPOSURE_ONLY; }
+        }
+        if (json.has("mutedWarningServers")) {
+            s.mutedWarningServers = new HashSet<>();
+            JsonArray muted = json.getAsJsonArray("mutedWarningServers");
+            for (int i = 0; i < muted.size(); i++) {
+                if (muted.get(i).isJsonPrimitive()) {
+                    s.mutedWarningServers.add(NullTraceConfig.normalizeAddress(muted.get(i).getAsString()));
+                }
+            }
+        }
 
         // Whitelist settings (new tri-state, with backward compat for old boolean)
         if (json.has("whitelistMode")) {

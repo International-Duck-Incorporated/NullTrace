@@ -319,6 +319,18 @@ public class NullTraceConfig {
         save();
     }
 
+    /**
+     * Sets the profile mode for a specific server without touching {@link #currentServer}.
+     * Used by the pre-connection warning, which knows the target server before the join
+     * path stores it.
+     */
+    public synchronized void setProfileMode(String server, ServerProfile.Mode mode) {
+        String key = normalizeAddress(server);
+        ServerProfile profile = serverProfiles.computeIfAbsent(key, ServerProfile::new);
+        profile.setMode(mode);
+        save();
+    }
+
     public synchronized Map<String, ServerProfile> getServerProfiles() {
         Map<String, ServerProfile> copy = new LinkedHashMap<>();
         for (Map.Entry<String, ServerProfile> entry : serverProfiles.entrySet()) {
