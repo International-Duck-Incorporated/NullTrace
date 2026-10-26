@@ -32,16 +32,51 @@ import java.util.List;
 public final class HttpClients {
     private HttpClients() {}
 
+    /**
+     * Shared client. Cached because building one is not free, and invalidated by
+     * {@link #reset()} whenever the proxy configuration changes — a client that outlives a
+     * proxy switch keeps leaking the player's address by the old route.
+     */
+    private static volatile HttpClient client;
+    private static volatile Duration cachedTimeout;
+    private static volatile boolean cachedFollowRedirects;
+
     /** An outbound client with the configured proxy, redirects left to the caller's policy. */
     public static HttpClient outbound(Duration connectTimeout, boolean followRedirects) {
-        HttpClient.Builder builder = HttpClient.newBuilder()
-                .connectTimeout(connectTimeout)
-                .followRedirects(followRedirects
-                        ? HttpClient.Redirect.NORMAL
-                        : HttpClient.Redirect.NEVER);
-        Proxy proxy = resolveProxy();
-        builder.proxy(new FixedProxySelector(proxy));
-        return builder.build();
+        HttpClient existing = client;
+        if (existing != null
+                && connectTimeout.equals(cachedTimeout)
+                && followRedirects == cachedFollowRedirects) {
+            return existing;
+        }
+        synchronized (HttpClients.class) {
+            if (client == null
+                    || !connectTimeout.equals(cachedTimeout)
+                    || followRedirects != cachedFollowRedirects) {
+                HttpClient.Builder builder = HttpClient.newBuilder()
+                        .connectTimeout(connectTimeout)
+                        .followRedirects(followRedirects
+                                ? HttpClient.Redirect.NORMAL
+                                : HttpClient.Redirect.NEVER);
+                builder.proxy(new FixedProxySelector(resolveProxy()));
+                client = builder.build();
+                cachedTimeout = connectTimeout;
+                cachedFollowRedirects = followRedirects;
+            }
+            return client;
+        }
+    }
+
+    /**
+     * Drop the cached client so the next request is built from the current proxy settings.
+     * Called when the configuration changes the proxy mode, the selected endpoint or the list.
+     */
+    public static void reset() {
+        synchronized (HttpClients.class) {
+            client = null;
+            cachedTimeout = null;
+            cachedFollowRedirects = false;
+        }
     }
 
     /** The proxy every outbound request should use; never null. */

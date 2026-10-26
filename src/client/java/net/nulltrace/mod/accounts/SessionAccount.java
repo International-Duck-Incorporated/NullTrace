@@ -60,25 +60,18 @@ public class SessionAccount implements Account {
             NullTraceConstants.AzureClientIds.LAUNCHER_CLIENT
     };
 
-    /** Builds the account HTTP client from the same explicit Minecraft proxy setting used by gameplay. */
+    /**
+     * Account requests use the same client as the rest of NullTrace's outbound traffic
+     * ({@link net.nulltrace.mod.util.HttpClients}), so the proxy mode chosen in Advanced —
+     * Direct / Launcher / Selected — applies here too, and a proxy change takes effect without
+     * a restart. Redirects are never followed: Microsoft's endpoints answer 302 to
+     * {@code login.live.com} on failure, and following that produced a misleading HTML body.
+     */
     private static HttpClient httpClient() {
-        HttpClient.Builder builder = HttpClient.newBuilder()
-                .connectTimeout(Duration.ofSeconds(NullTraceConstants.Retry.HTTP_TIMEOUT_SECONDS))
-                .followRedirects(HttpClient.Redirect.NEVER);
-        java.net.Proxy proxy = Minecraft.getInstance().getProxy();
-        if (proxy != null && proxy != java.net.Proxy.NO_PROXY
-                && proxy.address() instanceof java.net.InetSocketAddress) {
-            builder.proxy(new java.net.ProxySelector() {
-                @Override public java.util.List<java.net.Proxy> select(URI uri) {
-                    return java.util.List.of(proxy);
-                }
-                @Override public void connectFailed(URI uri, java.net.SocketAddress address, java.io.IOException error) {
-                    NullTrace.LOGGER.debug("[NullTrace] Account proxy connection failed for {}: {}", uri, error.getMessage());
-                }
-            });
-        }
-        return builder.build();
+        return net.nulltrace.mod.util.HttpClients.outbound(
+                Duration.ofSeconds(NullTraceConstants.Retry.HTTP_TIMEOUT_SECONDS), false);
     }
+
     
     public SessionAccount(String accessToken) {
         this.accessToken = accessToken;

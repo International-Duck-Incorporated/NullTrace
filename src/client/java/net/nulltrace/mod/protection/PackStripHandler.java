@@ -67,10 +67,13 @@ public final class PackStripHandler {
         // freshly-pushed pack enters as selected (matches vanilla first-push flow).
         userUnselectedOptional.remove(id);
 
-        // Consent overlay is whole-pack-strip (ASK) only.
+        // Consent overlay is whole-pack-strip (ASK) only. Validate the URL *before* taking the
+        // one-shot flag: a server used to be able to send a single required pack with an
+        // unusable URL, burn the flag, and from then on every later push was stripped with no
+        // prompt at all. isHttpUrl() is cheap and does not touch the flag.
         if (stripPack && required && mode == SpoofSettings.StripMode.ASK
+                && isHttpUrl(url)
                 && overlayShownThisSession.compareAndSet(false, true)) {
-            if (!isHttpUrl(url)) return; // vanilla will reject with INVALID_URL
             PackStripOverlay.enqueue(id, required);
         }
     }
@@ -98,6 +101,7 @@ public final class PackStripHandler {
             requiredPacks.clear();
             wrappedPacks.clear();
             userUnselectedOptional.clear();
+            overlayShownThisSession.set(false);
             ShaderStripTracker.clear();
             return;
         }

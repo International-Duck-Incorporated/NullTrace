@@ -27,20 +27,12 @@ public final class UpdateChecker {
     private static final String FALLBACK_RELEASE_URL = UpdateMetadata.CURSEFORGE_PROJECT_URL + "/files/all";
 
     /**
-     * Built lazily so it can be created after the config (and therefore the proxy choice) is
-     * loaded, and so a proxy change applies without restarting the game.
+     * The client lives in {@link HttpClients}, which caches one instance and drops it when the
+     * proxy configuration changes. Keeping a second cache here meant a proxy switch never
+     * applied to this check until the game restarted.
      */
-    private static volatile HttpClient httpClient;
-
     private static HttpClient http() {
-        HttpClient existing = httpClient;
-        if (existing != null) return existing;
-        synchronized (UpdateChecker.class) {
-            if (httpClient == null) {
-                httpClient = HttpClients.outbound(Duration.ofSeconds(10), true);
-            }
-            return httpClient;
-        }
+        return HttpClients.outbound(Duration.ofSeconds(10), true);
     }
 
     private static final AtomicBoolean CHECK_STARTED = new AtomicBoolean();

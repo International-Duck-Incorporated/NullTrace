@@ -75,8 +75,12 @@ public class NullTraceClient implements ClientModInitializer {
 			ModRegistry.rebuildDependencyClosure();
 		});
 
-		ClientTickEvents.END_CLIENT_TICK.register(PackStripOverlay::tryShowNext);
-		ClientTickEvents.END_CLIENT_TICK.register(client -> ShaderStripTracker.flushPending());
+			ClientTickEvents.END_CLIENT_TICK.register(PackStripOverlay::tryShowNext);
+			ClientTickEvents.END_CLIENT_TICK.register(client -> ShaderStripTracker.flushPending());
+			// Configuration changes only mark work as pending (see NullTraceConfig.save); the
+			// write and any dependency-closure rebuild happen here, at most once per tick.
+			ClientTickEvents.END_CLIENT_TICK.register(client -> NullTraceConfig.getInstance().flush());
+			ClientLifecycleEvents.CLIENT_STOPPING.register(client -> NullTraceConfig.getInstance().saveNow());
 
 		NullTrace.LOGGER.info("NullTrace client protection initialized");
 	}

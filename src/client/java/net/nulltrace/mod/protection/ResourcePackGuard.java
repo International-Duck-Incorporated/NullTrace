@@ -16,6 +16,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Comparator;
+import java.util.stream.Stream;
 
 /**
  * Manages resource pack cache and provides utilities for cache clearing.
@@ -109,8 +110,10 @@ public class ResourcePackGuard {
         }
 
         int deleted = 0;
-        try {
-            for (Path p : Files.walk(cachePath).sorted(Comparator.reverseOrder()).toList()) {
+        // Files.walk holds directory handles and must be closed; leaking them left the very
+        // files this method deletes locked on Windows.
+        try (Stream<Path> walk = Files.walk(cachePath)) {
+            for (Path p : walk.sorted(Comparator.reverseOrder()).toList()) {
                 if (p.equals(cachePath)) continue;
                 try {
                     if (Files.deleteIfExists(p)) {

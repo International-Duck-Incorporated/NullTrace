@@ -27,18 +27,9 @@ public final class JarIntegrityChecker {
 
     private static final String RELEASES_BASE_URL = "https://gitlab.com/api/v4/projects/international-duck-incorporated%2FNullTrace/releases/v";
 
-    /** Lazily created so the configured proxy applies; see {@link HttpClients}. */
-    private static volatile HttpClient httpClient;
-
+    /** Shared, proxy-aware client; invalidated by {@link HttpClients#reset()} on a proxy change. */
     private static HttpClient http() {
-        HttpClient existing = httpClient;
-        if (existing != null) return existing;
-        synchronized (JarIntegrityChecker.class) {
-            if (httpClient == null) {
-                httpClient = HttpClients.outbound(Duration.ofSeconds(10), true);
-            }
-            return httpClient;
-        }
+        return HttpClients.outbound(Duration.ofSeconds(10), true);
     }
 
     private static volatile boolean tamperDetected = false;
@@ -285,10 +276,6 @@ public final class JarIntegrityChecker {
      * Converts a byte array to a lowercase hex string.
      */
     private static String bytesToHex(byte[] bytes) {
-        StringBuilder sb = new StringBuilder(bytes.length * 2);
-        for (byte b : bytes) {
-            sb.append(String.format("%02x", b));
-        }
-        return sb.toString();
+        return java.util.HexFormat.of().formatHex(bytes);
     }
 }
