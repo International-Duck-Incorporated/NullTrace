@@ -52,6 +52,98 @@ public class LocalAddressUtil {
     }
 
     /**
+     * True for ranges a remote server must never be able to point a client at, regardless of
+     * where that server itself lives: loopback, unspecified, link-local, multicast and reserved
+     * space. Unlike {@link #isLocalAddress(InetAddress)} this excludes RFC 1918 / ULA / CGNAT,
+     * which are reachable on a LAN where the server legitimately lives too.
+     */
+    public static boolean isNeverServerReachable(InetAddress address) {
+        if (address == null) return false;
+        if (address.isAnyLocalAddress()
+                || address.isLoopbackAddress()
+                || address.isLinkLocalAddress()
+                || address.isMulticastAddress()) {
+            return true;
+        }
+        byte[] bytes = address.getAddress();
+        int offset = bytes.length == 16 && isIpv4Mapped(bytes) ? 12 : 0;
+        if (bytes.length == 4 || offset == 12) {
+            int a = bytes[offset] & 0xFF;
+            int b = bytes[offset + 1] & 0xFF;
+            if (a == 0) return true;              // 0.0.0.0/8 "this network"
+            if (a == 127) return true;            // loopback
+            if (a == 169 && b == 254) return true; // link-local
+            if (a >= 224) return true;            // multicast + reserved + broadcast
+            return false;
+        }
+        int first = bytes[0] & 0xFF;
+        int second = bytes[1] & 0xFF;
+        if (first == 0xFF) return true;                        // ff00::/8 multicast
+        if (first == 0xFE && (second & 0xC0) == 0x80) return true; // fe80::/10 link-local
+        // ::1 loopback is covered by isLoopbackAddress above.
+        return false;
+    }
+
+    /**
+     * Whether a server-directed URL target should be blocked.
+     *
+     * <p>This is the policy the resource-pack guard uses, and it exists because the previous
+     * check short-circuited on "the game server is itself on a private address". That turned
+     * every local-address guard off for anyone playing on a LAN world or a home server, so a
+     * server on {@code 192.168.x.x} could point the client at {@code http://127.0.0.1:<port>/}
+     * and read the result. Loopback, link-local and multicast are never legitimate pack hosts;
+     * RFC 1918 / ULA / CGNAT targets are only tolerated when the server shares that network.
+     *
+     * <p>An unresolvable or empty host is not blocked here: the connection will fail on its own,
+     * and DNS answers are re-checked for each redirect hop.
+     *
+     * @param serverAddress address of the game server (an IP literal, may be null)
+     * @param targetHost    host of the URL the server asked the client to fetch
+     */
+    public static boolean isBlockedServerPackTarget(String serverAddress, String targetHost) {
+        if (targetHost == null || targetHost.isBlank()) return false;
+
+        InetAddress[] targets;
+        try {
+            targets = InetAddress.getAllByName(stripBrackets(targetHost.trim()));
+        } catch (UnknownHostException e) {
+            return false;
+        }
+
+        boolean serverIsLocal = isLocalServer(serverAddress);
+        for (InetAddress target : targets) {
+            if (isNeverServerReachable(target)) return true;
+            if (!serverIsLocal && isLocalAddress(target)) return true;
+        }
+        return false;
+    }
+
+    private static boolean isLocalServer(String serverAddress) {
+        if (serverAddress == null || serverAddress.isBlank()) return false;
+        try {
+            return isLocalAddress(serverAddress);
+        } catch (UnknownHostException e) {
+            return false;
+        }
+    }
+
+    private static String stripBrackets(String host) {
+        if (host.startsWith("[") && host.endsWith("]") && host.length() > 2) {
+            return host.substring(1, host.length() - 1);
+        }
+        return host;
+    }
+
+    private static boolean isIpv4Mapped(byte[] bytes) {
+        if (bytes.length != 16) return false;
+        for (int i = 0; i < 10; i++) {
+            if (bytes[i] != 0) return false;
+        }
+        return (bytes[10] == (byte) 0xFF && bytes[11] == (byte) 0xFF)
+                || (bytes[10] == 0 && bytes[11] == 0);
+    }
+
+    /**
      * True when a single resolved address belongs to a local, private, carrier-NAT, loopback,
      * link-local or multicast range.
      */
@@ -94,8 +186,6 @@ public class LocalAddressUtil {
     private static boolean isLocalIpv4(byte[] bytes, int offset) {
         int a = bytes[offset] & 0xFF;
         int b = bytes[offset + 1] & 0xFF;
-        int c = bytes[offset + 2] & 0xFF;
-        int d = bytes[offset + 3] & 0xFF;
 
         // 0.0.0.0/8 "this network"
         if (a == 0) return true;
@@ -113,10 +203,8 @@ public class LocalAddressUtil {
         if (a == 192 && b == 168) return true;
         // 198.18.0.0/15 benchmarking
         if (a == 198 && (b == 18 || b == 19)) return true;
-        // 224/4 multicast and 240/4 reserved
-        if (a >= 224) return true;
-        // Defensive: a zero netmask-ish address is never a valid public target.
-        return a == 255 && b == 255 && c == 255 && d == 255;
+        // 224/4 multicast, 240/4 reserved, and 255.255.255.255 broadcast
+        return a >= 224;
     }
 
     /** Normalizes a host string for logging and profile keys (lowercase, no trailing dot). */

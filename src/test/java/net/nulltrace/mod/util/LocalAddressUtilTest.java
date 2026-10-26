@@ -138,6 +138,55 @@ class LocalAddressUtilTest {
         assertFalse(LocalAddressUtil.isLiteralAddress(null));
     }
 
+    // ------------------------------------------------- server-directed target policy
+
+    /**
+     * The policy the resource-pack guard applies. The regression it exists for: the guard used
+     * to short-circuit on "the game server is itself local", so a LAN server could point the
+     * client at loopback.
+     */
+    @Test
+    void loopbackIsBlockedEvenFromALanServer() {
+        String lanServer = "192.168.1.20";
+        for (String target : new String[]{"127.0.0.1", "localhost", "[::1]", "0.0.0.0", "169.254.1.1"}) {
+            assertTrue(LocalAddressUtil.isBlockedServerPackTarget(lanServer, target),
+                    target + " must stay blocked even when the server is on the LAN");
+            assertTrue(LocalAddressUtil.isBlockedServerPackTarget("203.0.113.9", target),
+                    target + " must be blocked for a public server too");
+        }
+    }
+
+    @Test
+    void privateTargetsFollowTheServerNetwork() {
+        String lanServer = "192.168.1.20";
+        String publicServer = "203.0.113.9";
+        assertFalse(LocalAddressUtil.isBlockedServerPackTarget(lanServer, "192.168.1.30"),
+                "a pack mirror on the same LAN is legitimate");
+        assertFalse(LocalAddressUtil.isBlockedServerPackTarget(lanServer, "10.0.0.7"),
+                "the server's own private network is reachable for it");
+        assertTrue(LocalAddressUtil.isBlockedServerPackTarget(publicServer, "192.168.1.30"),
+                "a public server must not reach the player's LAN");
+        assertTrue(LocalAddressUtil.isBlockedServerPackTarget(publicServer, "10.0.0.7"),
+                "RFC 1918 from a public server is a probe");
+        assertTrue(LocalAddressUtil.isBlockedServerPackTarget(publicServer, "100.64.0.9"),
+                "CGNAT from a public server is a probe");
+    }
+
+    @Test
+    void publicTargetsAreAlwaysAllowed() {
+        assertFalse(LocalAddressUtil.isBlockedServerPackTarget("192.168.1.20", "203.0.113.9"));
+        assertFalse(LocalAddressUtil.isBlockedServerPackTarget("203.0.113.9", "cdn.example.com"));
+        assertFalse(LocalAddressUtil.isBlockedServerPackTarget(null, "198.51.100.7"));
+    }
+
+    @Test
+    void unresolvableOrEmptyTargetIsNotBlockedHere() {
+        // Nothing to connect to; vanilla fails on its own and every hop is re-checked.
+        assertFalse(LocalAddressUtil.isBlockedServerPackTarget("203.0.113.9", ""));
+        assertFalse(LocalAddressUtil.isBlockedServerPackTarget("203.0.113.9", " "));
+        assertFalse(LocalAddressUtil.isBlockedServerPackTarget("203.0.113.9", "does-not-exist.invalid"));
+    }
+
     @Test
     void hostNormalizationIsStable() {
         assertEquals("example.com", LocalAddressUtil.normalizeHost("  Example.COM.  "));
