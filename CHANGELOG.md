@@ -4,6 +4,22 @@ All notable changes to NullTrace are documented here.
 
 ## [Unreleased]
 
+### Added
+- `tools/ci/` checks that run without Gradle: `check_metadata.py` (version, tag, changelog, target and README-table agreement), `check_sources.py` (mixin config against source for every template variant, entrypoints, credential scan), `inspect_jar.py` (18 jar checks), `gen_sums.py` (checksums, `SHA256SUMS`, `release-manifest.json`), `lint_gitlab_ci.py` (CI structure, `rules: if` simulation, shell syntax) and `selftest.py` (assertions that each check fails when it should).
+- `tools/ci/preflight.sh` runs the whole cheap gate locally, optionally including a build, jar audit and checksums.
+- CI publishes a `release-manifest.json` recording the commit, pipeline, per-file hashes and the Minecraft/Java range of each artifact.
+
+### Changed
+- CI is staged fail-fast: a Python-only `preflight` stage blocks every Gradle job, the four-target matrix is limited to `main` and release tags, merge requests and feature branches build one target, Gradle caches are keyed per target, and superseded pipelines are cancelled.
+- Test jobs publish JUnit XML; the dependency report is produced by the 26.3 build instead of a separate Gradle start in a security stage; `publish` is serialised with `resource_group`.
+- A release now requires the build matrix, both test matrices, the proxy harness, the jar audit and the preflight tag check; previously `publish` waited only for the build artifacts.
+
+### Fixed
+- SHA-256 sidecars embedded the `release/` directory (`sha256sum release/x.jar > release/x.jar.sha256`), so `sha256sum -c` failed for anyone who downloaded the pair. They are now written with bare file names and LF endings and verified from inside the release directory.
+- `SHA256SUMS` and the provenance manifest were promised by the release notes but produced by no job.
+- Release API failures were ignored (`|| true`), so a release could be created without assets while the pipeline stayed green.
+- Feature branches and merge requests produced no pipeline at all.
+
 ## [2.1.1] - 2026-10-17
 
 Version note: an earlier build was published as 2.1.0 before the proxy manager, the redesigned

@@ -28,7 +28,7 @@ This document describes the current GitLab repository, not the historical GitHub
 - Central `ConnectionContext`, `PrivacyPolicy`, `PrivacyDecision`, `AuditLedger`, and server-profile model
 - `/nulltrace audit` and `/nulltrace profile`
 - Pre-connection privacy warning that rows each surface as shown/hidden, with **Connect** / **Protect & connect**, a details panel, and a per-server mute
-- GitLab CI build, JUnit policy tests across two Minecraft targets, proxy harness, adversarial fixture, JAR inspection (including a refmap-vs-jar consistency guard), and checksum stages
+- GitLab CI staged as `preflight` → build matrix → tests → jar audit → release, with JUnit reports, a Python-only jar audit (refmap, mixin wiring, entrypoints, bytecode/`depends.java` agreement, JiJ), bare-name checksums, `SHA256SUMS` and a `release-manifest.json`; merge requests build a single target, and every check runs locally through `tools/ci/preflight.sh`
 - No offline-account path: only authenticated Microsoft sessions can be switched in
 
 ## Privacy architecture
@@ -104,19 +104,18 @@ With NullTrace    -> probe is blocked, normalized, or explicitly reported
 ## Release pipeline
 
 ```text
-build matrix
+preflight  (metadata, CI definition, mixin wiring, fixtures, self-tests)
    ↓
-unit / policy tests
-   ↓
-adversarial fixture tests
-   ↓
-dependency + license checks
-   ↓
-JAR inspection
-   ↓
-SHA-256 checksums
-   ↓
-GitLab Release assets
+build matrix (1.21.11, 26.1, 26.2, 26.3)      unit / policy tests (both ends)
+   ↓                                              ↓
+proxy harness ────────────────────────────────→ jar audit
+                                                  ↓
+                                    JAR inspection + checksums + manifest
+                                                  ↓
+                                         GitLab Release assets
 ```
+
+`publish` requires every row above. Merge requests and feature branches run the same
+shape with a single build and a single test target.
 
 Stable releases are created from `v*` tags. Main-branch artifacts remain CI artifacts until the project’s GitLab release policy promotes them.
