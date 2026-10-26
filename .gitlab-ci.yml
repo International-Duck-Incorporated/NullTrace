@@ -1,70 +1,197 @@
+# NullTrace CI
+#
+# Design notes (see docs/devops/runbook.md for the operator view):
+#
+#  * Cheap checks run before expensive ones. `preflight` is pure Python and fails
+#    in seconds; nothing spends a Gradle build until it passes.
+#  * Full 4-target matrix only on `main` and release tags. Merge requests and
+#    feature branches build one target, which is where the compute minutes went.
+#  * A release publishes only when the builds, both test matrices, the jar audit
+#    and the tag guard have all passed. The previous version let `publish` start
+#    as soon as the build artifacts existed, so a tag could ship an untested jar.
+#  * Checksums are generated and verified by tools/ci/gen_sums.py, which writes
+#    bare file names. `sha256sum release/x.jar > release/x.jar.sha256` embeds the
+#    release/ prefix and breaks `sha256sum -c` for anyone who downloads the pair.
+#
+# Self-hosted runners: if the namespace runs out of shared-runner minutes, register
+# a runner on your own machine and give it a tag, then uncomment the `tags:` block
+# in `default:` below. Nothing else in this file needs to change.
+
 stages:
+  - validate
   - build
   - test
-  - security
+  - audit
   - release
 
 workflow:
+  auto_cancel:
+    on_new_commit: interruptible
   rules:
-    - if: '$CI_COMMIT_TAG =~ /^v[0-9]+\.[0-9]+\.[0-9]+$/'
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+$/'
     - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
-    - when: never
+    # A branch with an open MR already has an MR pipeline; skip the duplicate.
+    - if: '$CI_COMMIT_BRANCH && $CI_OPEN_MERGE_REQUESTS'
+      when: never
+    - if: '$CI_COMMIT_BRANCH'
 
 variables:
   GRADLE_USER_HOME: "$CI_PROJECT_DIR/.gradle"
-  GIT_DEPTH: "0"
+  GRADLE_OPTS: "-Dorg.gradle.daemon=false"
+  GRADLE_CACHE_PATHS: ""
+  # Enough history for `git describe` without cloning the whole repository.
+  GIT_DEPTH: "20"
 
-cache:
-  # Keep the cache key simple: GitLab limits cache:key:files to two files.
-  key: "gradle-${CI_COMMIT_REF_SLUG}"
+default:
+  interruptible: true
+  timeout: 45m
+  retry:
+    max: 2
+    when:
+      - runner_system_failure
+      - stuck_or_timeout_failure
+  # tags: [self-hosted]
+
+# --------------------------------------------------------------------- anchors
+
+.matrix_rules: &matrix_rules
+  - if: '$CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+$/'
+  - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+  - when: never
+
+.smoke_rules: &smoke_rules
+  - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+  - if: '$CI_COMMIT_BRANCH && $CI_COMMIT_BRANCH != $CI_DEFAULT_BRANCH'
+  - when: never
+
+.tag_rules: &tag_rules
+  - if: '$CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+$/'
+  - when: never
+
+.gradle_cache: &gradle_cache
+  key: "gradle-$MC_VERSION"
   paths:
     - .gradle/caches/
     - .gradle/wrapper/
 
-build:
+# -------------------------------------------------------------------- validate
+
+preflight:
+  # Runs in seconds and in every pipeline. Everything that can be checked without
+  # compiling lives here: CI syntax and job selection, release metadata, mixin
+  # wiring, the Python fixtures, and the self-tests for the checks themselves.
+  stage: validate
+  image: python:3.12-alpine
+  cache: []
+  script:
+    - apk add --no-cache py3-yaml >/dev/null
+    - |
+      set -u
+      status=0
+      run() {
+        echo ""
+        echo "=== $* ==="
+        "$@" || status=1
+      }
+      run python3 tools/ci/lint_gitlab_ci.py --quiet --scenario all
+      if [ -n "${CI_COMMIT_TAG:-}" ]; then
+        run python3 tools/ci/check_metadata.py --tag "$CI_COMMIT_TAG"
+      else
+        run python3 tools/ci/check_metadata.py
+      fi
+      run python3 tools/ci/check_sources.py
+      run python3 -m unittest discover -s tests -p 'test_*.py'
+      run python3 tools/ci/selftest.py
+      if [ "$status" -ne 0 ]; then
+        echo "preflight failed: fix the checks above before spending build minutes" >&2
+        exit 1
+      fi
+      echo "preflight passed"
+
+# ----------------------------------------------------------------------- build
+
+.build_template:
   stage: build
   image: eclipse-temurin:25-jdk
+  cache:
+    <<: *gradle_cache
+    policy: pull-push
+  before_script:
+    - chmod +x ./gradlew
+  script:
+    - ./gradlew --no-daemon --stacktrace ":$MC_VERSION:build"
+    # Keep the dependency report where a JDK and a warm cache already exist
+    # instead of paying for a second Gradle start in the audit stage.
+    - if [ "$MC_VERSION" = "26.3" ]; then ./gradlew --no-daemon -q ":26.3:dependencies" --configuration runtimeClasspath > dependency-report.txt; fi
+    - mkdir -p release
+    - find "versions/$MC_VERSION/build/libs" -maxdepth 1 -type f -name '*.jar' ! -name '*-sources.jar' ! -name '*-dev.jar' -exec cp {} release/ \;
+    - test -n "$(find release -type f -name '*.jar' -print -quit)"
+  artifacts:
+    name: "NullTrace-$MC_VERSION-$CI_COMMIT_SHORT_SHA"
+    paths:
+      - release/*.jar
+      - dependency-report.txt
+    expire_in: 30 days
+
+build_matrix:
+  extends: .build_template
   parallel:
     matrix:
       - MC_VERSION: "1.21.11"
       - MC_VERSION: "26.1"
       - MC_VERSION: "26.2"
       - MC_VERSION: "26.3"
-  script:
-    - chmod +x ./gradlew
-    - ./gradlew --no-daemon ":$MC_VERSION:build" --stacktrace
-    - mkdir -p release
-    - find "versions/$MC_VERSION/build/libs" -maxdepth 1 -type f -name '*.jar' ! -name '*-sources.jar' ! -name '*-dev.jar' -exec cp {} release/ \;
-    - test -n "$(find release -type f -name '*.jar' -print -quit)"
-    - for JAR in release/*.jar; do sha256sum "$JAR" > "$JAR.sha256"; done
-  artifacts:
-    name: "NullTrace-$MC_VERSION-$CI_COMMIT_SHORT_SHA"
-    paths:
-      - release/*
-    expire_in: 30 days
+  rules: *matrix_rules
 
-policy_tests:
-  # Run the JUnit suite on both ends of the supported range: 1.21.11 is the newest obfuscated
-  # target, 26.3 the newest unobfuscated one. Test code that only compiles on one of them used to
-  # go unnoticed because only 26.3 was ever built here.
+build_smoke:
+  extends: .build_template
+  variables:
+    MC_VERSION: "26.3"
+  rules: *smoke_rules
+
+# ------------------------------------------------------------------------ test
+
+.gradle_test_template:
   stage: test
   image: eclipse-temurin:25-jdk
+  needs: []
+  cache:
+    <<: *gradle_cache
+    policy: pull
+  before_script:
+    - chmod +x ./gradlew
+  script:
+    - ./gradlew --no-daemon --stacktrace ":${MC_VERSION}:test"
+  artifacts:
+    when: always
+    reports:
+      junit: "versions/$MC_VERSION/build/test-results/test/*.xml"
+    expire_in: 7 days
+
+policy_tests_matrix:
+  extends: .gradle_test_template
   parallel:
     matrix:
       - MC_VERSION: "1.21.11"
       - MC_VERSION: "26.3"
-  script:
-    - chmod +x ./gradlew
-    - ./gradlew --no-daemon ":$MC_VERSION:test" --stacktrace
+  rules: *matrix_rules
+
+policy_tests_smoke:
+  extends: .gradle_test_template
+  variables:
+    MC_VERSION: "26.3"
+  rules: *smoke_rules
 
 proxy_probe_harness:
-  # Standalone JDK-only harness for the proxy feature (tests/proxy/README.md). It starts its own
-  # fake HTTP CONNECT / SOCKS5 endpoints, so it needs no Minecraft and no Gradle.
+  # Standalone JDK-only harness for the proxy feature (tests/proxy/README.md). It
+  # starts its own fake HTTP CONNECT / SOCKS5 endpoints, so it needs no Minecraft
+  # and no Gradle.
   stage: test
   image: eclipse-temurin:25-jdk
+  needs: []
+  cache: []
   script:
-    # eclipse-temurin ships no curl/wget/apt, so fetch gson with the JDK itself
-    # (single-file source execution). Same bytes as the curl download.
     - |
       cat > /tmp/Fetch.java <<'EOF'
       import java.io.InputStream;
@@ -95,141 +222,135 @@ proxy_probe_harness:
       tests/proxy/ProxyProbeHarness.java
     - java -cp /tmp/gson.jar:/tmp/proxy-harness ProxyProbeHarness
 
-adversarial_fixture:
-  stage: test
+# ----------------------------------------------------------------------- audit
+
+jar_audit:
+  # Pure zip reads: no JDK, no Gradle, no network. Replaces the shell block that
+  # used to grep a refmap name and nothing else.
+  stage: audit
   image: python:3.12-alpine
-  script:
-    - python -m unittest discover -s tests -p 'test_*.py' -v
-
-security_audit:
-  stage: security
-  image: eclipse-temurin:25-jdk
+  cache: []
   needs:
-    - job: build
+    - job: build_matrix
       artifacts: true
+      optional: true
+    - job: build_smoke
+      artifacts: true
+      optional: true
   script:
-    - chmod +x ./gradlew
-    - ./gradlew --no-daemon :26.3:dependencies --configuration runtimeClasspath > dependency-report.txt
-    - test -s dependency-report.txt
-    - test -n "$(find release -type f -name '*.jar' -print -quit)"
     - |
-      set -eu
-      for JAR in release/*.jar; do
-        echo "Inspecting $JAR"
-        jar tf "$JAR" > /tmp/listing.txt
-        grep -q 'fabric.mod.json' /tmp/listing.txt
-        grep -q 'LICENSE' /tmp/listing.txt
-        if grep -E '(^|/)accessToken$|(^|/)refreshToken$' /tmp/listing.txt; then
-          echo "Unexpected plaintext token resource in $JAR" >&2
-          exit 1
-        fi
-        sha256sum --check "$JAR.sha256"
-
-        # A mixin config that names a refmap must actually ship it. On unobfuscated
-        # versions (26.x) Loom generates no refmap, so a leftover "refmap" key is
-        # invisible here but shows up as a startup warning for every user.
-        rm -rf /tmp/jarroot && mkdir -p /tmp/jarroot
-        ( cd /tmp/jarroot && jar xf "$OLDPWD/$JAR" )
-        for CFG in $(cd /tmp/jarroot && find . -name '*mixins.json'); do
-          REFMAP="$(sed -n 's/.*"refmap"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "/tmp/jarroot/$CFG")"
-          test -n "$REFMAP" || continue
-          if [ ! -f "/tmp/jarroot/$REFMAP" ]; then
-            echo "$CFG in $JAR declares refmap '$REFMAP' but the jar does not contain it" >&2
-            exit 1
-          fi
-        done
-      done
+      set -u
+      if [ -n "${CI_COMMIT_TAG:-}" ]; then
+        VERSION_FLAG="--version ${CI_COMMIT_TAG#v} --strict"
+      else
+        VERSION_FLAG=""
+      fi
+      # shellcheck disable=SC2086
+      python3 tools/ci/inspect_jar.py $VERSION_FLAG release/*.jar
+    - python3 tools/ci/gen_sums.py --release-dir release --verify
+    - |
+      # Prove a user can verify a download: bare file names, LF endings.
+      cd release
+      for JAR in *.jar; do sha256sum -c "$JAR.sha256"; done
   artifacts:
+    name: "NullTrace-checksums-$CI_COMMIT_SHORT_SHA"
     when: always
     paths:
-      - dependency-report.txt
       - release/*.sha256
+      - release/SHA256SUMS
+      - release/release-manifest.json
+      - dependency-report.txt
     expire_in: 30 days
 
-release_tag_guard:
-  # A tag that disagrees with the version baked into the artifacts produces a release the in-game
-  # updater will never offer: it only prompts when the published version is strictly newer than the
-  # installed one. Tag v2.1.0 sat on a 2.0.2 tree, so this job exists to fail instead.
-  stage: security
-  image: eclipse-temurin:25-jdk
-  needs: []
-  rules:
-    - if: '$CI_COMMIT_TAG =~ /^v[0-9]+\.[0-9]+\.[0-9]+$/'
-  script:
-    - |
-      set -eu
-      MOD_VERSION="$(sed -n 's/^mod_version=\(.*\)$/\1/p' gradle.properties | head -n 1)"
-      TAG_VERSION="${CI_COMMIT_TAG#v}"
-      if [ -z "$MOD_VERSION" ]; then
-        echo "Could not read mod_version from gradle.properties" >&2
-        exit 1
-      fi
-      if [ "$MOD_VERSION" != "$TAG_VERSION" ]; then
-        echo "Tag $CI_COMMIT_TAG does not match mod_version=$MOD_VERSION in gradle.properties." >&2
-        echo "Artifacts would be named +v$MOD_VERSION, so existing $TAG_VERSION installs would never be offered them." >&2
-        exit 1
-      fi
-      echo "Tag $CI_COMMIT_TAG matches gradle.properties ($MOD_VERSION)."
-    - |
-      if ! grep -q "^## \[${CI_COMMIT_TAG#v}\]" CHANGELOG.md; then
-        echo "WARNING: CHANGELOG.md has no '## [${CI_COMMIT_TAG#v}]' section for this release." >&2
-      fi
+# --------------------------------------------------------------------- release
 
 publish:
   stage: release
-  image: alpine:3.21
+  image: alpine:3.22
+  # One release at a time: two tag pipelines must not interleave uploads.
+  resource_group: release
   needs:
-    - job: build
+    - job: preflight
+    - job: policy_tests_matrix
+    - job: policy_tests_smoke
+      optional: true
+    - job: proxy_probe_harness
+    - job: jar_audit
       artifacts: true
-  rules:
-    - if: '$CI_COMMIT_TAG =~ /^v[0-9]+\.[0-9]+\.[0-9]+$/'
+    - job: build_matrix
+      artifacts: true
+  rules: *tag_rules
   before_script:
-    - apk add --no-cache curl unzip
+    - apk add --no-cache curl unzip >/dev/null
   script:
     - |
       set -eu
       API="$CI_API_V4_URL/projects/$CI_PROJECT_ID"
-      RELEASE_URL="$API/releases"
       VERSION="$CI_COMMIT_TAG"
-      EXPECTED_VERSION="${VERSION#v}"
+      EXPECTED="${VERSION#v}"
 
-      # Every artifact must carry the tag's version: the updater compares versions, so a jar that
-      # reports something else would be published under a number nobody can be notified about.
+      echo "Assets to publish:"
+      ls -l release
+
+      # Every artifact must carry the tag's version; the updater only offers
+      # strictly newer versions, so a mismatched jar is invisible to users.
       for JAR in release/*.jar; do
-        # fabric.mod.json ships minified on one line, so match the key anywhere on the line.
-        ACTUAL_VERSION="$(unzip -p "$JAR" fabric.mod.json | grep -oE '"version"[[:space:]]*:[[:space:]]*"[^"]*"' | head -n 1 | sed 's/.*:[[:space:]]*"\([^"]*\)"/\1/')"
-        if [ "$ACTUAL_VERSION" != "$EXPECTED_VERSION" ]; then
-          echo "$JAR reports version '$ACTUAL_VERSION', but the tag is $VERSION" >&2
+        ACTUAL="$(unzip -p "$JAR" fabric.mod.json | grep -oE '"version"[[:space:]]*:[[:space:]]*"[^"]*"' | head -n 1 | sed 's/.*:[[:space:]]*"\([^"]*\)"/\1/')"
+        if [ "$ACTUAL" != "$EXPECTED" ]; then
+          echo "$JAR reports '$ACTUAL', tag is $VERSION" >&2
           exit 1
         fi
       done
-      echo "All artifacts report version $EXPECTED_VERSION"
+      echo "all jars report $EXPECTED"
 
-      # Create the GitLab release. A pre-existing release is harmless; assets
-      # are still uploaded/linked below.
-      curl --fail-with-body --silent --show-error --request POST \
-        --header "JOB-TOKEN: $CI_JOB_TOKEN" \
-        --data-urlencode "name=NullTrace $VERSION" \
-        --data-urlencode "tag_name=$VERSION" \
-        --data-urlencode "description=NullTrace release $VERSION for Minecraft 1.21.11, 26.1, 26.2 and 26.3." \
-        "$RELEASE_URL" || true
+      post() {
+        code="$(curl --silent --show-error --retry 3 --retry-delay 2 --retry-connrefused \
+          --output /tmp/response.json --write-out '%{http_code}' \
+          --request POST --header "JOB-TOKEN: $CI_JOB_TOKEN" "$@")"
+        case "$code" in
+          2*) return 0 ;;
+          409) echo "  already exists (409)"; return 0 ;;
+          *) echo "  HTTP $code: $(cat /tmp/response.json)" >&2; return 1 ;;
+        esac
+      }
 
-      for ARTIFACT in release/*.jar release/*.sha256; do
+      echo "Creating release $VERSION"
+      post --data-urlencode "name=NullTrace $VERSION" \
+           --data-urlencode "tag_name=$VERSION" \
+           --data-urlencode "description=NullTrace $VERSION for Minecraft 1.21.11, 26.1, 26.2 and 26.3. Checksums and a provenance manifest are attached." \
+           "$API/releases"
+
+      for ARTIFACT in release/*.jar release/*.sha256 release/SHA256SUMS release/release-manifest.json; do
+        [ -f "$ARTIFACT" ] || continue
         NAME="$(basename "$ARTIFACT")"
-        PACKAGE_URL="$API/packages/generic/nulltrace/$VERSION/$NAME"
-
-        curl --fail-with-body --silent --show-error --request PUT \
-          --header "JOB-TOKEN: $CI_JOB_TOKEN" \
-          --upload-file "$ARTIFACT" \
-          "$PACKAGE_URL"
-
-        curl --fail-with-body --silent --show-error --request POST \
-          --header "JOB-TOKEN: $CI_JOB_TOKEN" \
-          --data-urlencode "name=$NAME" \
-          --data-urlencode "url=$PACKAGE_URL" \
-          --data-urlencode "link_type=package" \
-          "$RELEASE_URL/$VERSION/assets/links" || true
+        URL="$API/packages/generic/nulltrace/$VERSION/$NAME"
+        echo "Uploading $NAME"
+        curl --fail-with-body --silent --show-error --retry 3 --retry-delay 2 --retry-connrefused \
+          --request PUT --header "JOB-TOKEN: $CI_JOB_TOKEN" \
+          --upload-file "$ARTIFACT" "$URL"
+        post --data-urlencode "name=$NAME" \
+             --data-urlencode "url=$URL" \
+             --data-urlencode "link_type=package" \
+             "$API/releases/$VERSION/assets/links" || echo "  warning: could not link $NAME"
       done
 
-      echo "Published $VERSION assets:"
-      find release -maxdepth 1 -type f \( -name '*.jar' -o -name '*.sha256' \) -printf ' - %f\n'
+      echo "Published $VERSION"
+
+pages:
+  # Optional: publishes docs/ and the changelog to GitLab Pages, which is where
+  # fabric.mod.json's homepage points. Manual on purpose - enable Pages in the
+  # project settings first, or leave this job alone.
+  stage: release
+  image: alpine:3.22
+  needs: []
+  script:
+    - mkdir -p public
+    - cp -r docs/. public/
+    - cp README.md CHANGELOG.md public/
+  artifacts:
+    paths:
+      - public
+  rules:
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+      when: manual
+      allow_failure: true

@@ -202,9 +202,26 @@ python -m unittest discover -s tests -p 'test_*.py' -v
 
 On Windows, replace `./gradlew` with `.\gradlew.bat`. Generated JARs are under `versions/<target>/build/libs/`; use the final non-source, non-dev JAR.
 
+### CI and local checks
+
+`.gitlab-ci.yml` runs a Python-only `preflight` stage first, then the build matrix, the JUnit suites, the proxy harness, and a jar audit. Nothing spends a Gradle build until `preflight` passes. Everything that stage does is also available locally, so a mistake costs a second instead of a pipeline:
+
+```bash
+# release metadata, CI definition, mixin wiring, fixtures, checks' own tests
+./tools/ci/preflight.sh
+
+# add the release gate for a tag you are about to push
+./tools/ci/preflight.sh --tag v2.1.1
+
+# build one target, then audit and checksum the jar it produced
+./tools/ci/preflight.sh --build 26.3
+```
+
+Individual checks live in [`tools/ci/`](tools/ci): `check_metadata.py`, `check_sources.py`, `inspect_jar.py`, `gen_sums.py`, `lint_gitlab_ci.py`, and `selftest.py`, which asserts that each check fails when it should. Operator notes — compute minutes, self-hosted runners, the release procedure and a failure→fix table — are in [`docs/devops/runbook.md`](docs/devops/runbook.md); the review behind them is in [`docs/devops/ci-review-2026-10-26.md`](docs/devops/ci-review-2026-10-26.md).
+
 ### Releases and contributions
 
-GitLab CI builds all four targets and runs tests and security checks. Tags matching `vX.Y.Z` publish GitLab release assets and SHA-256 checksums. CurseForge hosts official releases separately; the in-game CurseForge update check does **not** upload files or change the CI publishing workflow. Development builds on `main` remain CI artifacts until released.
+GitLab CI builds all four targets and runs the tests, the proxy harness and the jar audit; merge requests and feature branches build a single target. Tags matching `vX.Y.Z` publish GitLab release assets, SHA-256 checksums, `SHA256SUMS` and a `release-manifest.json`, and publishing only starts once every test job and the jar audit for that pipeline has passed. CurseForge hosts official releases separately; the in-game CurseForge update check does **not** upload files or change the CI publishing workflow. Development builds on `main` remain CI artifacts until released.
 
 Report reproducible bugs and compatibility issues in the [GitLab issue tracker](https://gitlab.com/international-duck-incorporated/NullTrace/-/issues). Include Minecraft, Fabric Loader, Fabric API, and NullTrace versions, relevant settings, and reproduction steps. Remove tokens and personal information from logs.
 
