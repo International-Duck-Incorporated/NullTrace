@@ -222,6 +222,24 @@ proxy_probe_harness:
       tests/proxy/ProxyProbeHarness.java
     - java -cp /tmp/gson.jar:/tmp/proxy-harness ProxyProbeHarness
 
+vault_harness:
+  # JDK-only test for the account token vault (tests/vault/README.md): base64 round-trip,
+  # AES-GCM AAD binding, tamper rejection and v1 migration. No Minecraft, no Gradle.
+  stage: test
+  image: eclipse-temurin:25-jdk
+  needs: []
+  cache: []
+  script:
+    - mkdir -p /tmp/vault-harness
+    - >
+      javac -encoding UTF-8 -d /tmp/vault-harness
+      tests/vault/stub/net/fabricmc/loader/api/FabricLoader.java
+      tests/vault/stub/net/nulltrace/mod/NullTrace.java
+      src/client/java/net/nulltrace/mod/accounts/AccountTokenVault.java
+      tests/vault/bridge/net/nulltrace/mod/accounts/AccountTokenVaultAccess.java
+      tests/vault/VaultHarness.java
+    - java -cp /tmp/vault-harness VaultHarness
+
 # ----------------------------------------------------------------------- audit
 
 jar_audit:

@@ -851,11 +851,11 @@ public class SessionAccount implements Account {
     public JsonObject toJson() {
         JsonObject json = new JsonObject();
         json.addProperty("type", "session");
-        String encryptedAccessToken = AccountTokenVault.encrypt(accessToken);
+        String encryptedAccessToken = AccountTokenVault.encrypt(accessToken, tokenBinding());
         if (encryptedAccessToken != null) {
             json.addProperty("accessTokenEncrypted", encryptedAccessToken);
         }
-        String encryptedRefreshToken = AccountTokenVault.encrypt(refreshToken);
+        String encryptedRefreshToken = AccountTokenVault.encrypt(refreshToken, tokenBinding());
         if (encryptedRefreshToken != null) {
             json.addProperty("refreshTokenEncrypted", encryptedRefreshToken);
         }
@@ -866,11 +866,26 @@ public class SessionAccount implements Account {
         return json;
     }
     
+    /**
+     * Identity the encrypted tokens are bound to. The UUID is the stable choice; the username is
+     * the fallback for an entry that has no UUID yet.
+     */
+    private String tokenBinding() {
+        if (uuid != null && !uuid.isBlank()) return uuid;
+        return username == null ? "" : username;
+    }
+
     public static SessionAccount fromJson(JsonObject json) {
+        // Candidates in the same order tokenBinding() prefers them, so a UUID that arrived after
+        // the tokens were first written still decrypts.
+        String jsonUuid = json.has("uuid") ? json.get("uuid").getAsString() : "";
+        String jsonUsername = json.has("username") ? json.get("username").getAsString() : "";
         String token = json.has("accessTokenEncrypted")
-                ? AccountTokenVault.decrypt(json.get("accessTokenEncrypted").getAsString()) : null;
+                ? AccountTokenVault.decrypt(json.get("accessTokenEncrypted").getAsString(),
+                        jsonUuid, jsonUsername) : null;
         String refresh = json.has("refreshTokenEncrypted")
-                ? AccountTokenVault.decrypt(json.get("refreshTokenEncrypted").getAsString()) : null;
+                ? AccountTokenVault.decrypt(json.get("refreshTokenEncrypted").getAsString(),
+                        jsonUuid, jsonUsername) : null;
         if (token == null && json.has("accessToken")) {
             // One-time migration for old files. Never write this field back.
             token = json.get("accessToken").getAsString();

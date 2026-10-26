@@ -4,7 +4,44 @@ All notable changes to NullTrace are documented here.
 
 ## [Unreleased]
 
+### Fixed
+- Account tokens could not be decrypted: the vault encoded with the URL-safe base64 alphabet and
+  decoded with the standard one, which throws for any value containing `-` or `_` (about 98 % of
+  ciphertexts). Every restart silently marked saved accounts invalid and asked for a fresh login.
+  Decoding now accepts both alphabets. Found by the new `tests/vault` harness, which pins an
+  envelope that actually contains a URL-safe character.
+- Resource-pack local-address blocking switched itself off while connected to a server on a
+  private address: a LAN server could point the client at `127.0.0.1:<port>` and the guard
+  short-circuited. Loopback, link-local, multicast and reserved targets are now blocked
+  regardless of where the server lives; RFC 1918 / ULA / CGNAT targets stay reachable when the
+  server shares that network.
+- A single malformed required resource-pack push consumed the one-shot "ask before applying"
+  prompt, so every later pack was stripped without asking.
+- The ViaFabricPlus identity payload (`vv:mod_details`, `vv:app_details`, `vv:proxy_details`) was
+  blocked only by the Netty pipeline handler. Both outbound filter paths now share one policy
+  (`ChannelDecision`), and a handler that cannot be installed raises a visible warning instead of
+  a debug line.
+- A proxy change did not reach the update and integrity checks until the game restarted: both
+  cached their own `HttpClient`. `HttpClients` now owns a single client and drops it when the
+  proxy configuration changes; account requests use it too, so the Direct / Launcher / Selected
+  mode applies to them.
+- `ResourcePackGuard.clearCacheFolder` leaked a directory handle per call (`Files.walk` was never
+  closed) — on Windows, locks on the files it was trying to delete.
+- Account tokens are now bound to their account with AES-GCM additional authenticated data, so a
+  token blob moved onto another account entry fails to decrypt instead of logging in as the wrong
+  account. `v1:` values remain readable and are rewritten on the next save.
+
+### Changed
+- Every settings toggle wrote the configuration file and rebuilt the mod dependency closure on
+  the render thread (the config screen calls `save()` from ~30 places). Writes are now deferred
+  to once per client tick, the closure is rebuilt only when whitelist membership changed, and
+  shutdown flushes synchronously.
+- `ConnectionContext.currentExposure` was populated with a raw channel count that ignored the
+  active policy and was never read; removed.
+
 ### Added
+- `tests/vault` — JDK-only harness for the token vault (26 checks) and a `vault_harness` CI job.
+- `ChannelDecisionTest` — the outbound payload policy matrix, including the Via identity block.
 - `tools/ci/` checks that run without Gradle: `check_metadata.py` (version, tag, changelog, target and README-table agreement), `check_sources.py` (mixin config against source for every template variant, entrypoints, credential scan), `inspect_jar.py` (18 jar checks), `gen_sums.py` (checksums, `SHA256SUMS`, `release-manifest.json`), `lint_gitlab_ci.py` (CI structure, `rules: if` simulation, shell syntax) and `selftest.py` (assertions that each check fails when it should).
 - `tools/ci/preflight.sh` runs the whole cheap gate locally, optionally including a build, jar audit and checksums.
 - CI publishes a `release-manifest.json` recording the commit, pipeline, per-file hashes and the Minecraft/Java range of each artifact.

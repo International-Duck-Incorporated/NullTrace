@@ -30,8 +30,9 @@ public final class PrivacyPolicy {
         for (PrivacySurface surface : PrivacySurface.values()) {
             builder.action(surface, PrivacyAction.BLOCK);
         }
-        // The vanilla channel is not a mod fingerprint and must remain usable.
-        builder.action(PrivacySurface.MOD_CHANNEL, PrivacyAction.BLOCK);
+        // Everything, including MOD_CHANNEL: the maximum-privacy preset is the "we will not
+        // speak first" profile. Vanilla channels are handled outside this surface, so the
+        // preset does not make the client unable to talk to a vanilla server.
         return builder.build();
     }
 
