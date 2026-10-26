@@ -5,6 +5,7 @@ import net.nulltrace.mod.tracking.ModRegistry;
 import net.nulltrace.mod.privacy.PrivacyAction;
 import net.nulltrace.mod.privacy.PrivacyPolicy;
 import net.nulltrace.mod.privacy.PrivacySurface;
+import net.nulltrace.mod.proxy.ProxyEntry;
 import net.nulltrace.mod.proxy.ProxySettings;
 import net.nulltrace.mod.privacy.ServerProfile;
 import com.google.gson.Gson;
@@ -16,6 +17,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.TreeSet;
+import java.util.concurrent.atomic.AtomicBoolean;
 import net.fabricmc.loader.api.FabricLoader;
 
 /**
@@ -75,6 +78,18 @@ public class NullTraceConfig {
     private final Map<String, ServerProfile> serverProfiles = new LinkedHashMap<>();
     /** Saved proxy endpoints and the selected mode. Owned here so Reset cannot wipe the list. */
     private final ProxySettings proxySettings = new ProxySettings();
+
+    /**
+     * Deferred-save state. The configuration screen calls {@link #save()} from ~30 places (one
+     * per toggle and cycle button), and save() used to write the file *and* rebuild the mod
+     * dependency closure every time — a graph walk and a disk write per click, on the render
+     * thread. save() now only marks work as pending; {@link #flush()} does it at most once per
+     * client tick, and the closure is rebuilt only when the whitelist inputs actually changed.
+     */
+    private final AtomicBoolean savePending = new AtomicBoolean();
+    private final AtomicBoolean closureRebuildPending = new AtomicBoolean();
+    private volatile String lastWhitelistSignature;
+    private volatile String lastProxySignature;
 
     private NullTraceConfig() {
         load();
@@ -270,7 +285,58 @@ public class NullTraceConfig {
         return true;
     }
 
+    /**
+     * Records that the configuration changed.
+     *
+     * <p>Cheap by design: it is called on every toggle in the config screen. The write and the
+     * dependency-closure rebuild happen in {@link #flush()} on the next client tick (or
+     * immediately during construction, when there is no client loop yet).
+     */
     public void save() {
+        savePending.set(true);
+
+        String whitelist = whitelistSignature();
+        if (!whitelist.equals(lastWhitelistSignature)) {
+            closureRebuildPending.set(true);
+        }
+
+        String proxy = proxySignature();
+        if (!proxy.equals(lastProxySignature)) {
+            lastProxySignature = proxy;
+            // A cached HttpClient keeps using the old route otherwise.
+            net.nulltrace.mod.util.HttpClients.reset();
+        }
+
+        // Constructor path (load() -> save()) and any caller before the client loop exists:
+        // there is no tick to defer to, so write now.
+        if (INSTANCE == null) {
+            flush();
+        }
+    }
+
+    /** Applies any pending save and closure rebuild. Cheap to call every tick. */
+    public synchronized void flush() {
+        boolean rebuild = closureRebuildPending.getAndSet(false);
+        if (savePending.getAndSet(false)) {
+            writeConfig();
+        }
+        if (rebuild) {
+            lastWhitelistSignature = whitelistSignature();
+            // The closure is derived purely from whitelist membership, so a batch of unrelated
+            // toggles costs one comparison instead of one graph walk each.
+            if (INSTANCE != null) {
+                ModRegistry.rebuildDependencyClosure();
+            }
+        }
+    }
+
+    /** Writes the current configuration immediately (shutdown path). */
+    public synchronized void saveNow() {
+        savePending.set(false);
+        writeConfig();
+    }
+
+    private synchronized void writeConfig() {
         try {
             JsonObject json = new JsonObject();
             json.add("settings", settings.toJson());
@@ -300,10 +366,21 @@ public class NullTraceConfig {
                 e.getMessage()
             );
         }
-        // Null-guard avoids constructor's save→getInstance recursion; NullTraceClient seeds the first build.
-        if (INSTANCE != null) {
-            ModRegistry.rebuildDependencyClosure();
-        }
+    }
+
+    /** Everything the dependency closure is derived from, in one comparable string. */
+    private String whitelistSignature() {
+        TreeSet<String> mods = new TreeSet<>(settings.getWhitelistedMods());
+        return settings.getWhitelistMode() + "\u0000" + mods;
+    }
+
+    /** Proxy mode, selection and endpoint list. */
+    private String proxySignature() {
+        StringBuilder sb = new StringBuilder(proxySettings.mode().name());
+        ProxyEntry selected = proxySettings.selected();
+        sb.append('\u0000').append(selected == null ? "" : selected.toString());
+        sb.append('\u0000').append(proxySettings.entries().toString());
+        return sb.toString();
     }
 
     public SpoofSettings getSettings() {
