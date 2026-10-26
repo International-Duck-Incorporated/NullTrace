@@ -82,8 +82,8 @@ public class HttpUtilMixin {
 
         if (!NullTraceConfig.getInstance().shouldBlockLocalPackUrls()) return original.call(instance);
 
-        if (!LocalAddressUtil.isLocalAddress(LocalAddressUtil.serverAddress)
-                && LocalAddressUtil.isLocalAddress(instance.getURL().getHost())) {
+        if (LocalAddressUtil.isBlockedServerPackTarget(
+                LocalAddressUtil.serverAddress, instance.getURL().getHost())) {
             NullTrace.LOGGER.warn("[NullTrace] Blocked connection to local address: {}", instance.getURL());
             PrivacyAudit.record(PrivacySurface.LOCAL_REQUEST, instance.getURL().toString(),
                     PrivacyAction.BLOCK, "Resource-pack URL resolves to a local or private address");
@@ -116,8 +116,8 @@ public class HttpUtilMixin {
                     } catch (MalformedURLException exception) {
                         limitUrl = new URL(instance.getURL(), instance.getHeaderField("Location"));
                     }
-                    if (!LocalAddressUtil.isLocalAddress(LocalAddressUtil.serverAddress)
-                            && LocalAddressUtil.isLocalAddress(limitUrl.getHost())) {
+                    if (LocalAddressUtil.isBlockedServerPackTarget(
+                            LocalAddressUtil.serverAddress, limitUrl.getHost())) {
                         PrivacyAudit.record(PrivacySurface.LOCAL_REQUEST, limitUrl.toString(),
                                 PrivacyAction.BLOCK, "Redirect limit target is local or private");
                         PrivacyLogger.alertLocalPortScanDetected(limitUrl.toString(), true);
@@ -146,8 +146,8 @@ public class HttpUtilMixin {
                 if (!proxyUrl.getProtocol().equalsIgnoreCase("http")
                         && !proxyUrl.getProtocol().equalsIgnoreCase("https")) break;
 
-                if (!LocalAddressUtil.isLocalAddress(LocalAddressUtil.serverAddress)
-                        && LocalAddressUtil.isLocalAddress(proxyUrl.getHost())) {
+                if (LocalAddressUtil.isBlockedServerPackTarget(
+                        LocalAddressUtil.serverAddress, proxyUrl.getHost())) {
                     NullTrace.LOGGER.warn("[NullTrace] Blocked connection to local address: {}", proxyUrl);
                     PrivacyAudit.record(PrivacySurface.LOCAL_REQUEST, proxyUrl.toString(),
                             PrivacyAction.BLOCK, "HTTP proxy redirect resolves to a local or private address");
@@ -173,8 +173,8 @@ public class HttpUtilMixin {
                 instance = (HttpURLConnection) url.openConnection(proxy);
                 instance.setAuthenticator(new Authenticator() {});
 
-                if (!LocalAddressUtil.isLocalAddress(LocalAddressUtil.serverAddress)
-                        && LocalAddressUtil.isLocalAddress(instance.getURL().getHost())) {
+                if (LocalAddressUtil.isBlockedServerPackTarget(
+                        LocalAddressUtil.serverAddress, instance.getURL().getHost())) {
                     NullTrace.LOGGER.warn("[NullTrace] Blocked connection to local address: {}", instance.getURL());
                     PrivacyAudit.record(PrivacySurface.LOCAL_REQUEST, instance.getURL().toString(),
                             PrivacyAction.BLOCK, "Redirect resolves to a local or private address");
