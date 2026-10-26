@@ -26,7 +26,6 @@ public final class PrivacyAudit {
                 .protocol(protocol)
                 .detectedMods(mods)
                 .exposedChannels(channels)
-                .currentExposure(channels.size())
                 .build());
         NullTrace.LOGGER.debug("[NullTrace] Started privacy audit for {}", server);
     }

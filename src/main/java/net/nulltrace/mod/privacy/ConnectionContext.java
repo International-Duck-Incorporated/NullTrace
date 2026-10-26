@@ -20,7 +20,6 @@ public final class ConnectionContext {
     private final Set<String> translations;
     private final Set<String> resourcePacks;
     private final Set<String> probes;
-    private final int currentExposure;
 
     private ConnectionContext(Builder builder) {
         this.server = normalize(builder.server);
@@ -31,7 +30,6 @@ public final class ConnectionContext {
         this.translations = immutable(builder.translations);
         this.resourcePacks = immutable(builder.resourcePacks);
         this.probes = immutable(builder.probes);
-        this.currentExposure = Math.max(0, builder.currentExposure);
     }
 
     public static Builder builder() {
@@ -50,7 +48,6 @@ public final class ConnectionContext {
     public Set<String> translations() { return translations; }
     public Set<String> resourcePacks() { return resourcePacks; }
     public Set<String> probes() { return probes; }
-    public int currentExposure() { return currentExposure; }
 
     public static final class Builder {
         private String server = "unknown";
@@ -61,7 +58,6 @@ public final class ConnectionContext {
         private final Set<String> translations = new LinkedHashSet<>();
         private final Set<String> resourcePacks = new LinkedHashSet<>();
         private final Set<String> probes = new LinkedHashSet<>();
-        private int currentExposure;
 
         public Builder server(String value) { this.server = value; return this; }
         public Builder protocol(String value) { this.protocol = value; return this; }
@@ -71,7 +67,6 @@ public final class ConnectionContext {
         public Builder translations(Iterable<String> values) { add(this.translations, values); return this; }
         public Builder resourcePacks(Iterable<String> values) { add(this.resourcePacks, values); return this; }
         public Builder probes(Iterable<String> values) { add(this.probes, values); return this; }
-        public Builder currentExposure(int value) { this.currentExposure = value; return this; }
         public ConnectionContext build() { return new ConnectionContext(this); }
 
         private static void add(Set<String> destination, Iterable<String> values) {
