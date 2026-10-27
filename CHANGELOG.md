@@ -2,7 +2,25 @@
 
 All notable changes to NullTrace are documented here.
 
-## [Unreleased]
+## [2.2.0] - 2026-10-27
+
+Privacy fixes, a release that can be verified, and one rule for chat signing.
+
+### Added
+- `tools/ci/verify_release.py`: compares a release directory against itself (`SHA256SUMS`,
+  `release-manifest.json`, the version inside every jar) and, with `--reference` or
+  `--project/--tag`, against what was actually published — byte for byte. This is the
+  CurseForge-vs-GitLab question answered by a check instead of a promise, and it runs in
+  `preflight --build` and in `jar_audit`.
+
+### Changed
+- Chat signing is decided in one place. `ChatSigningPolicy` (no Minecraft types) now answers
+  "sign or strip" for both `ClientPacketListenerMixin` (which skips the signing encoder) and
+  `ServerboundChatPacketMixin` (which clears the packet field and accessor), and distinguishes
+  "the user turned signing off" from "another mod owns signing". Wire behaviour is unchanged:
+  unsigned chat is still rejected by servers that enforce secure profiles. Making that
+  configurable is a separate decision that needs a real server to test against, and it is
+  written down in `docs/reviews/src-review-2026-10-26-fixes.md` rather than half-done here.
 
 ### Fixed
 - Account tokens could not be decrypted: the vault encoded with the URL-safe base64 alphabet and

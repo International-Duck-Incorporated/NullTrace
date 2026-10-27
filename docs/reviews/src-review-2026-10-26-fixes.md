@@ -59,11 +59,15 @@ code that had no test, and its happy path was broken.
 
 Deferred, with reasons:
 
-- **Message-signing chain semantics** (`sendChat` still advances the local chain with a `null`
-  signature). Changing this alters wire behaviour against 1.19.1–1.19.2 servers that still
-  enforce signed chat; it needs a decision and a test against a real server, not a drive-by fix.
-- **CurseForge vs GitLab byte identity** for the integrity checker — needs the two published
-  artifacts compared, which is a release-time check, not a code change.
+- **Message-signing chain semantics** (`sendChat` skips the signing encoder, so the local chain
+  does not advance, and the packet carries no signature). 2.2.0 did not change the wire
+  behaviour; it removed the way the rule could drift — both call sites now go through
+  `ChatSigningPolicy`, which names the reason (`USER_OFF` vs `EXTERNAL_MANAGER`) instead of one
+  boolean read from three places. Actually making unsigned chat work on strict servers stays
+  open: it needs a decision and a real 1.19.1–1.19.2 server to test against.
+- ~~**CurseForge vs GitLab byte identity**~~ — done in 2.2.0: `tools/ci/verify_release.py` compares
+  a release directory against itself and, with `--reference`/`--tag`, against what was actually
+  published, byte for byte. It runs in `preflight --build` and in `jar_audit`.
 
 ## Files touched
 
