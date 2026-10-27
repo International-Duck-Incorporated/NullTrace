@@ -111,14 +111,14 @@ are about to tag, and `CHANGELOG.md` has a `## [X.Y.Z]` section with at least on
 
 ```bash
 # 1. The exact checks CI will run, locally, before tagging.
-./tools/ci/preflight.sh --tag v2.1.1
+./tools/ci/preflight.sh --tag v2.2.0
 
 # 2. Optional but recommended: a real build + jar audit on one target.
-./tools/ci/preflight.sh --build 26.3 --tag v2.1.1
+./tools/ci/preflight.sh --build 26.3 --tag v2.2.0
 
 # 3. Tag and push. The tag pipeline publishes; branches never do.
-git tag -a v2.1.1 -m "NullTrace 2.1.1"
-git push origin v2.1.1
+git tag -a v2.2.0 -m "NullTrace 2.1.1"
+git push origin v2.2.0
 ```
 
 What the tag pipeline does, in order: `preflight` re-checks the tag against
@@ -153,7 +153,7 @@ it, which `preflight` fails.
 
 ```bash
 # in the directory with the jar and its .sha256
-sha256sum -c nulltrace-26.3+v2.1.1.jar.sha256
+sha256sum -c nulltrace-26.3+v2.2.0.jar.sha256
 
 # or the whole set at once
 sha256sum -c SHA256SUMS
@@ -187,11 +187,11 @@ a published tag silently.
 ```bash
 # delete one asset
 curl --request DELETE --header "PRIVATE-TOKEN: <token>" \
-  "https://gitlab.com/api/v4/projects/<id>/packages/generic/nulltrace/v2.1.1/nulltrace-26.3%2Bv2.1.1.jar"
+  "https://gitlab.com/api/v4/projects/<id>/packages/generic/nulltrace/v2.2.0/nulltrace-26.3%2Bv2.2.0.jar"
 
 # delete the release entry (the tag stays)
 curl --request DELETE --header "PRIVATE-TOKEN: <token>" \
-  "https://gitlab.com/api/v4/projects/<id>/releases/v2.1.1"
+  "https://gitlab.com/api/v4/projects/<id>/releases/v2.2.0"
 ```
 
 The updater never offers an older version, so after pulling a release you must
@@ -202,7 +202,7 @@ that already fetched the bad build will not be prompted again.
 
 ```bash
 ./tools/ci/preflight.sh                      # everything CI does before Gradle
-./tools/ci/preflight.sh --tag v2.1.1         # add the release gate
+./tools/ci/preflight.sh --tag v2.2.0         # add the release gate
 ./tools/ci/preflight.sh --build 26.3         # + build, inspect and checksum the jar
 
 python3 tools/ci/check_metadata.py           # release/target metadata only

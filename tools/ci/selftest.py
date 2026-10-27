@@ -245,6 +245,60 @@ def lint_case(tests: SelfTest) -> None:
         tests.check(f"scenario {scenario} simulates", 0, code, out, "job(s)")
 
 
+def release_verify_cases(tests: SelfTest, workdir: pathlib.Path) -> None:
+    """verify_release.py has to catch a tampered jar, a tampered manifest and a bad sidecar."""
+    import json as _json
+    import shutil as _shutil
+
+    # gen_sums.py takes the manifest version from gradle.properties, so the fake jars have to
+    # carry the same version or the check correctly reports a mixed release.
+    import re as _re
+    props = (pathlib.Path(__file__).resolve().parents[2] / "gradle.properties").read_text()
+    version = _re.search(r"^mod_version=(\S+)$", props, _re.MULTILINE).group(1)
+
+    good_dir = workdir / "rel-good"
+    good_dir.mkdir(parents=True, exist_ok=True)
+    write_jar(good_dir / f"nulltrace-26.3+v{version}.jar", jar_entries(version=version, mc_range=">=26.3 <26.4"))
+    write_jar(good_dir / f"nulltrace-26.2+v{version}.jar", jar_entries(version=version, mc_range=">=26.2 <26.3"))
+
+    code, out = run("gen_sums.py", "--release-dir", str(good_dir))
+    tests.check("gen_sums writes a manifest", 0, code, out)
+
+    code, out = run("verify_release.py", "--dir", str(good_dir))
+    tests.check("verify_release accepts a clean release", 0, code, out, "0 failures")
+
+    # a byte appended to one jar must be caught by both SHA256SUMS and the manifest
+    tampered = workdir / "rel-tampered"
+    _shutil.copytree(good_dir, tampered)
+    with (tampered / f"nulltrace-26.3+v{version}.jar").open("ab") as handle:
+        handle.write(b"\0")
+    code, out = run("verify_release.py", "--dir", str(tampered))
+    tests.check("verify_release rejects a tampered jar", 1, code, out, "checksum matches file")
+
+    # a manifest that disagrees with the file is a failure, not a warning
+    lied = workdir / "rel-lied"
+    _shutil.copytree(good_dir, lied)
+    manifest = _json.loads((lied / "release-manifest.json").read_text())
+    manifest["artifacts"][0]["sha256"] = "0" * 64
+    (lied / "release-manifest.json").write_text(_json.dumps(manifest))
+    code, out = run("verify_release.py", "--dir", str(lied))
+    tests.check("verify_release rejects a tampered manifest", 1, code, out, "manifest digest matches file")
+
+    # comparing against a published copy that differs must fail
+    code, out = run("verify_release.py", "--dir", str(good_dir), "--reference", str(tampered))
+    tests.check("verify_release compares a reference copy", 1, code, out, "published bytes identical")
+
+    # a jar missing from the manifest is called out
+    dropped = workdir / "rel-dropped"
+    _shutil.copytree(good_dir, dropped)
+    manifest = _json.loads((dropped / "release-manifest.json").read_text())
+    manifest["artifacts"] = manifest["artifacts"][1:]
+    (dropped / "release-manifest.json").write_text(_json.dumps(manifest))
+    code, out = run("verify_release.py", "--dir", str(dropped))
+    tests.check("verify_release notices a jar the manifest forgot", 1, code, out,
+                "manifest lists exactly the jars")
+
+
 def main() -> int:
     global VERBOSE
     VERBOSE = "-v" in sys.argv
@@ -254,6 +308,7 @@ def main() -> int:
         jar_cases(tests, workdir)
         metadata_cases(tests, workdir / "meta")
         lint_case(tests)
+        release_verify_cases(tests, workdir)
     return tests.summary()
 
 

@@ -97,6 +97,8 @@ if [ -n "$BUILD_TARGET" ]; then
         done
         run "$PYTHON" tools/ci/inspect_jar.py --strict "$RELEASE_DIR"/*.jar
         run "$PYTHON" tools/ci/gen_sums.py --release-dir "$RELEASE_DIR"
+        # Same checks the release gate runs: checksums, manifest and jar versions all agreeing.
+        run "$PYTHON" tools/ci/verify_release.py --dir "$RELEASE_DIR"
         echo "    artifacts and checksums in $RELEASE_DIR (removed on exit)"
     fi
 fi

@@ -270,6 +270,11 @@ jar_audit:
       # Prove a user can verify a download: bare file names, LF endings.
       cd release
       for JAR in *.jar; do sha256sum -c "$JAR.sha256"; done
+    - |
+      # And prove the release directory is self-consistent: every jar listed with the right
+      # digest in both SHA256SUMS and release-manifest.json, one mod version across all of them.
+      cd "$CI_PROJECT_DIR"
+      python3 tools/ci/verify_release.py --dir release
   artifacts:
     name: "NullTrace-checksums-$CI_COMMIT_SHORT_SHA"
     when: always

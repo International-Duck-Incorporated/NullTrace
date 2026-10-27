@@ -211,7 +211,8 @@ On Windows, replace `./gradlew` with `.\gradlew.bat`. Generated JARs are under `
 ./tools/ci/preflight.sh
 
 # add the release gate for a tag you are about to push
-./tools/ci/preflight.sh --tag v2.1.1
+./tools/ci/verify_release.py --dir release --tag v2.2.0   # published bytes == local bytes
+./tools/ci/preflight.sh --tag v2.2.0
 
 # build one target, then audit and checksum the jar it produced
 ./tools/ci/preflight.sh --build 26.3
