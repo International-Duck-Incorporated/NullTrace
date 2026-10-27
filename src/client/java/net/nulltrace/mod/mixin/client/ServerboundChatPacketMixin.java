@@ -2,6 +2,7 @@ package net.nulltrace.mod.mixin.client;
 
 import net.nulltrace.mod.NullTrace;
 import net.nulltrace.mod.config.NullTraceConfig;
+import net.nulltrace.mod.privacy.ChatSigningPolicy;
 import net.minecraft.network.chat.LastSeenMessages;
 import net.minecraft.network.chat.MessageSignature;
 import net.minecraft.network.protocol.game.ServerboundChatPacket;
@@ -10,6 +11,7 @@ import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Mutable;
 import org.spongepowered.asm.mixin.Shadow;
+import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
@@ -41,7 +43,7 @@ public class ServerboundChatPacketMixin {
     @Inject(method = "<init>(Ljava/lang/String;Ljava/time/Instant;JLjava/util/Optional;Lnet/minecraft/network/chat/LastSeenMessages$Update;)V", at = @At("TAIL"))
     private void nulltrace$stripSignatureOnInit(String message, Instant timeStamp, long salt,
             Optional<MessageSignature> signature, LastSeenMessages.Update lastSeenMessages, CallbackInfo ci) {
-        if (NullTraceConfig.getInstance().shouldNotSign()) {
+        if (nulltrace$stripSignature()) {
             NullTrace.LOGGER.debug("[NullTrace] signing OFF —stripping chat signature");
             this.signature = Optional.empty();
         }
@@ -49,7 +51,7 @@ public class ServerboundChatPacketMixin {
 
     @Inject(method = "signature", at = @At("HEAD"), cancellable = true)
     private void nulltrace$stripSignatureOnGet(CallbackInfoReturnable<Optional<MessageSignature>> info) {
-        if (NullTraceConfig.getInstance().shouldNotSign()) {
+        if (nulltrace$stripSignature()) {
             NullTrace.LOGGER.debug("[NullTrace] signing OFF —returning empty signature");
             info.setReturnValue(Optional.empty());
         }
@@ -67,7 +69,7 @@ public class ServerboundChatPacketMixin {
     @Inject(method = "<init>(Ljava/lang/String;Ljava/time/Instant;JLnet/minecraft/network/chat/MessageSignature;Lnet/minecraft/network/chat/LastSeenMessages$Update;)V", at = @At("TAIL"))
     private void nulltrace$stripSignatureOnInit(String message, Instant timeStamp, long salt, 
             MessageSignature signature, LastSeenMessages.Update lastSeenMessages, CallbackInfo ci) {
-        if (NullTraceConfig.getInstance().shouldNotSign()) {
+        if (nulltrace$stripSignature()) {
             NullTrace.LOGGER.debug("[NullTrace] signing OFF —stripping chat signature");
             this.signature = null;
         }
@@ -78,10 +80,21 @@ public class ServerboundChatPacketMixin {
      */
     @Inject(method = "signature", at = @At("HEAD"), cancellable = true)
     private void nulltrace$stripSignatureOnGet(CallbackInfoReturnable<MessageSignature> info) {
-        if (NullTraceConfig.getInstance().shouldNotSign()) {
+        if (nulltrace$stripSignature()) {
             NullTrace.LOGGER.debug("[NullTrace] signing OFF —returning null signature");
             info.setReturnValue(null);
         }
     }
     //?}
+    /**
+     * The same rule the encoder path uses; see {@link ChatSigningPolicy}.
+     *
+     * <p>Kept as one method so the 26.3 and legacy branches cannot disagree, and so this mixin
+     * cannot drift away from {@code ClientPacketListenerMixin} again.
+     */
+    @Unique
+    private static boolean nulltrace$stripSignature() {
+        return ChatSigningPolicy.shouldStrip(NullTraceConfig.getInstance().isSigningModeOff(),
+                NullTraceConfig.isChatSigningManagedExternally());
+    }
 }

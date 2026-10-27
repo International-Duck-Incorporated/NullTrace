@@ -602,6 +602,23 @@ public class NullTraceConfig {
         return !CHAT_SIGNING_MANAGED_EXTERNALLY && settings.shouldNotSign();
     }
 
+    /**
+     * The user's stored signing preference, ignoring whether an external mod owns the feature.
+     *
+     * <p>{@link #shouldNotSign()} answers "should NullTrace strip signatures", which is always
+     * false when No Chat Reports is installed. This answers "did the user ask for no signing",
+     * which is what {@code ChatSigningPolicy} needs in order to name the reason and to tell the
+     * two apart instead of folding them into one boolean.
+     */
+    public boolean isSigningModeOff() {
+        return settings.shouldNotSign();
+    }
+
+    /** True when another mod owns chat signing, so NullTrace must leave signatures alone. */
+    public static boolean isChatSigningManagedExternally() {
+        return CHAT_SIGNING_MANAGED_EXTERNALLY;
+    }
+
     // Privacy
     public boolean shouldDisableTelemetry() {
         return !TELEMETRY_MANAGED_EXTERNALLY && settings.isDisableTelemetry();

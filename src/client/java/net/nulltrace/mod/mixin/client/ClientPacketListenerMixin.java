@@ -5,6 +5,7 @@ import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import net.nulltrace.mod.NullTrace;
 import net.nulltrace.mod.PrivacyLogger;
 import net.nulltrace.mod.config.NullTraceConfig;
+import net.nulltrace.mod.privacy.ChatSigningPolicy;
 import net.nulltrace.mod.detection.PacketContext;
 import net.nulltrace.mod.protection.PackStripHandler;
 import net.nulltrace.mod.protection.PackStripOverlay;
@@ -159,11 +160,25 @@ public abstract class ClientPacketListenerMixin {
             at = @At(value = "INVOKE", target = "Lnet/minecraft/network/chat/SignedMessageChain$Encoder;pack(Lnet/minecraft/network/chat/SignedMessageBody;)Lnet/minecraft/network/chat/MessageSignature;")
     )
     private MessageSignature nulltrace$skipSigningEncoder(SignedMessageChain.Encoder encoder, SignedMessageBody body, Operation<MessageSignature> original) {
-        if (NullTraceConfig.getInstance().shouldNotSign()) {
-            NullTrace.LOGGER.debug("[NullTrace] Skipping message signing (chain preserved)");
+        // One rule for both signing call sites; see ChatSigningPolicy.
+        if (nulltrace$stripSignature()) {
+            NullTrace.LOGGER.debug("[NullTrace] Skipping message signing (chain preserved): {}",
+                    ChatSigningPolicy.describe(nulltrace$signingReason()));
             return null;
         }
         return original.call(encoder, body);
+    }
+
+    @Unique
+    private static ChatSigningPolicy.Reason nulltrace$signingReason() {
+        return ChatSigningPolicy.reason(NullTraceConfig.getInstance().isSigningModeOff(),
+                NullTraceConfig.isChatSigningManagedExternally());
+    }
+
+    @Unique
+    private static boolean nulltrace$stripSignature() {
+        return ChatSigningPolicy.shouldStrip(NullTraceConfig.getInstance().isSigningModeOff(),
+                NullTraceConfig.isChatSigningManagedExternally());
     }
 
     @Inject(method = "close", at = @At("HEAD"))
