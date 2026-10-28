@@ -12,9 +12,14 @@ the README's claims and against your own two review documents
 (`docs/reviews/src-review-2026-10-26.md` and `…-fixes.md`). Where a claim was testable without a
 Minecraft client, I ran it — see "What I could and could not verify".
 
-**Not done:** a Gradle build or a runtime test in Minecraft. This machine has only JDK 11 and no
-Fabric stack; the 1.21.11 target wants JDK 21 and 26.x wants JDK 25. Everything below is either a
-static read with `file:line` evidence or a result from a standalone harness I ran against the real
+**Build and tests:** run afterwards, on Temurin 21.0.13 + 25.0.5, on the merged `main`
+(`a10711e`). All four targets compile and test green — 424 unit tests (106 × 4), 18/18 jar-audit
+checks per jar, checksums and release consistency verified, plus the `tests/vault` (26/26) and
+`tests/proxy` (54/54) harnesses. Numbers in §"Build and test verification" at the end.
+
+**Still not done:** a runtime test inside Minecraft. No client ran on any target, so mixin binding,
+account switching, pack strip and chat signing are compile-verified only. Everything below is
+either a static read with `file:line` evidence or a result from a harness I ran against the real
 source files.
 
 ---
@@ -323,9 +328,9 @@ test matrix, the jar audit and the artifact provenance checks from the *same* pi
 each jar's embedded version against the tag, and publishes bare-name checksums that are re-verified
 with `sha256sum -c`. That is better than most projects of this size.
 
-## Fixes on this branch
+## Fixes landed
 
-Three commits' worth of change over 3 files (74 +/14 −):
+Landed on `main` as `a10711e` (this document is `d3eb6c3`), 3 files, 74 +/14 −:
 
 1. `ClientPacketListenerMixin` — `getHostString()` server key + a `@Unique` helper with the
    reasoning in the javadoc (finding 1).
@@ -336,6 +341,42 @@ Three commits' worth of change over 3 files (74 +/14 −):
 Findings 2, 4, 5 are design changes rather than one-line patches; the login refactor wants a real
 client to test against, so the render-thread hop in §2 is written up rather than applied here.
 
-**Not compiled.** No Gradle build or Minecraft run was possible in this environment (JDK 11 only,
-no Fabric stack), so the three changes are reviewed-by-eye plus the vault harness. `./gradlew
-:1.21.11:build :26.1:build :26.2:build :26.3:build` and `:test` should gate the merge.
+**Compiled and tested.** `./gradlew :1.21.11:test :26.1:test :26.2:test :26.3:test` and
+`buildAll` both succeed with these fixes in place, as do the four-target jar audit and the two
+standalone harnesses — see the section below.
+
+## Build and test verification
+
+Run 2026-10-28 on Temurin 21.0.13+9 / 25.0.5+8, Gradle 9.6.1, Loom 1.17.11, against `main` @
+`a10711e`.
+
+| Step | Result |
+| --- | --- |
+| `:1.21.11:test :26.1:test :26.2:test :26.3:test` | BUILD SUCCESSFUL (3m 30s) — **424 tests, 0 failures, 0 skipped** |
+| `buildAll` (4 targets) | BUILD SUCCESSFUL — 4 jars; bytecode major 65 (1.21.11) and 69 (26.x), as configured |
+| `inspect_jar.py --version 2.2.0 --strict` | **18/18 checks × 4 jars** |
+| `gen_sums.py --verify` + `sha256sum -c` + `verify_release.py` | 4/4 OK, **12/12 checks** |
+| `tests/vault` | **26/26** |
+| `tests/proxy` | **54/54** |
+| `tools/ci/preflight.sh` | preflight OK (14 checks, 33/33 self-tests, fixtures) |
+
+The count above is 106 tests per target; `src-review-2026-10-26-fixes.md` records 98, so the
+suite has grown since that document was written.
+
+Three warnings come from the Mixin AP on the obfuscated 1.21.11 target, and two are worth citing
+against findings in this review:
+
+* `DownloadQueueMixin.java:37: Unable to determine descriptor for @ModifyExpressionValue target
+  method` — compile-time confirmation of finding 4: the pack-cache isolation target is a lambda
+  and is not statically resolvable, which is why it is the one `require = 0` injection.
+* `ComponentSerializationMixin.java:20: Unable to locate method mapping for
+  @At(INVOKE) 'Codec;recursive(...)'` — the component-probe protection's only binding point
+  targets a Mojang library method, so no refmap entry can be emitted. Library classes are not
+  remapped, so this most likely binds fine, but it is the first thing to check in a client smoke
+  test.
+* `PackSelectionModelEntryBaseMixin.java:25` — target should be in `value`; cosmetic.
+
+**What this still does not prove:** that any of it works inside a running client. Mixin binding for
+the whole `nulltrace.client.mixins.json` list, account switching off the render thread (finding 2),
+pack strip against a real server pack, and chat signing against an `enforce-secure-profile=true`
+server all remain unverified at runtime.
