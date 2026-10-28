@@ -107,18 +107,36 @@ public abstract class ClientPacketListenerMixin {
         }
     }
 
+    /**
+     * Stable per-server key for privacy profiles and the audit ledger.
+     *
+     * <p>{@code InetSocketAddress#toString()} is {@code hostname/resolvedIp:port}, so the old
+     * parse (strip a leading {@code /}, then cut at the last {@code :}) produced
+     * {@code example.com/172.66.147.243}. Two consequences, both silent: a profile saved against
+     * that key stops matching as soon as the server's DNS answer changes (proxies, SRV targets,
+     * any CDN front-end), and joining the same server by hostname and by IP produced two
+     * different profiles. A user who pinned {@code MAXIMUM_PRIVACY} for a server could end up on
+     * {@code STANDARD} without ever being told.
+     *
+     * <p>{@link InetSocketAddress#getHostString()} returns the host name the client connected
+     * with and never the resolved address, which is exactly the identity a profile should have.
+     */
+    @Unique
+    private static String nulltrace$serverKey(java.net.SocketAddress address) {
+        if (address instanceof java.net.InetSocketAddress inet) {
+            String host = inet.getHostString();
+            return host == null ? "" : host;
+        }
+        String fallback = address == null ? "" : address.toString();
+        if (fallback.startsWith("/")) fallback = fallback.substring(1);
+        int colonIndex = fallback.lastIndexOf(':');
+        return colonIndex > 0 ? fallback.substring(0, colonIndex) : fallback;
+    }
+
     @Inject(method = "handleLogin", at = @At("TAIL"))
     private void onLogin(ClientboundLoginPacket packet, CallbackInfo ci) {
         ClientPacketListener listener = (ClientPacketListener)(Object)this;
-        String serverAddress = listener.getConnection().getRemoteAddress().toString();
-
-        if (serverAddress.startsWith("/")) {
-            serverAddress = serverAddress.substring(1);
-        }
-        int colonIndex = serverAddress.lastIndexOf(':');
-        if (colonIndex > 0) {
-            serverAddress = serverAddress.substring(0, colonIndex);
-        }
+        String serverAddress = nulltrace$serverKey(listener.getConnection().getRemoteAddress());
 
         NullTraceConfig.getInstance().setCurrentServer(serverAddress);
         PrivacyAudit.begin(serverAddress, "unknown");

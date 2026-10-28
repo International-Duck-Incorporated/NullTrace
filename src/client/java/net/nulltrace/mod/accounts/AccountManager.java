@@ -393,8 +393,16 @@ public class AccountManager {
     
     /**
      * Save accounts to disk.
+     *
+     * <p>{@code synchronized}, and the temp file name is unique per call. Callers live on three
+     * threads already — the render thread (add/remove/activate), the single-thread refresh
+     * executor ({@code refreshAllAccounts}) and the fork-join pool that runs account login — and
+     * they all used to write {@code nulltrace-accounts.json.tmp} at once. Two writers truncating
+     * and filling the same path can interleave into a file that is neither write, and an
+     * {@code ATOMIC_MOVE} of that file then publishes a broken JSON document. Recovery is
+     * "re-authenticate every saved account", which is exactly what the vault exists to avoid.
      */
-    public void save() {
+    public synchronized void save() {
         try {
             JsonObject json = new JsonObject();
             
@@ -408,7 +416,8 @@ public class AccountManager {
             
             // Write atomically using temp file
             Files.createDirectories(ACCOUNTS_PATH.getParent());
-            Path tempFile = ACCOUNTS_PATH.resolveSibling(ACCOUNTS_PATH.getFileName() + ".tmp");
+            Path tempFile = ACCOUNTS_PATH.resolveSibling(
+                    ACCOUNTS_PATH.getFileName() + "." + java.util.UUID.randomUUID() + ".tmp");
             Files.writeString(tempFile, GSON.toJson(json));
             Files.move(tempFile, ACCOUNTS_PATH, 
                     java.nio.file.StandardCopyOption.REPLACE_EXISTING,

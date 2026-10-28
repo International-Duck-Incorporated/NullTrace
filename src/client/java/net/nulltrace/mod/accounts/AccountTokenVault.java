@@ -128,14 +128,47 @@ final class AccountTokenVault {
                     return key.clone();
                 }
                 NullTrace.LOGGER.warn("[NullTrace] Invalid account vault key; generating a new key and requiring re-authentication");
+                // Drop the unusable file so the exclusive create below can succeed; nothing can be
+                // decrypted with it anyway, and every account is being re-authenticated regardless.
+                Files.deleteIfExists(KEY_PATH);
             }
             byte[] generated = new byte[KEY_BYTES];
             RANDOM.nextBytes(generated);
-            Files.write(KEY_PATH, generated, java.nio.file.StandardOpenOption.CREATE,
-                    java.nio.file.StandardOpenOption.TRUNCATE_EXISTING);
-            restrict(KEY_PATH);
+            writeKeyExclusively(generated);
             key = generated;
             return generated.clone();
+        }
+    }
+
+    /**
+     * Create the key file with owner-only permissions in the same operation that creates it.
+     *
+     * <p>The previous sequence was create-then-{@code chmod}: between those two calls the file
+     * existed with the umask default (commonly 0644), so any other local process or user could
+     * read the key that decrypts every saved session token. The gap is small but it is exactly
+     * the window a scheduled backup or a nosy local account hits.
+     *
+     * <p>{@code CREATE_NEW} also means a concurrent first run cannot silently follow a
+     * half-written file: one caller wins, the other sees {@code FileAlreadyExistsException} and
+     * re-reads the winner's key.
+     */
+    private static void writeKeyExclusively(byte[] generated) throws java.io.IOException {
+        java.util.Set<java.nio.file.OpenOption> options = java.util.Set.of(
+                java.nio.file.StandardOpenOption.CREATE_NEW,
+                java.nio.file.StandardOpenOption.WRITE);
+        try {
+            try (java.nio.channels.SeekableByteChannel channel = Files.newByteChannel(KEY_PATH, options,
+                    java.nio.file.attribute.PosixFilePermissions.asFileAttribute(
+                            EnumSet.of(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE)))) {
+                channel.write(java.nio.ByteBuffer.wrap(generated));
+            }
+        } catch (java.nio.file.FileAlreadyExistsException e) {
+            throw e;
+        } catch (UnsupportedOperationException | java.nio.file.FileSystemException e) {
+            // Non-POSIX filesystem (Windows): create exclusively, then restrict best-effort.
+            Files.write(KEY_PATH, generated, java.nio.file.StandardOpenOption.CREATE_NEW,
+                    java.nio.file.StandardOpenOption.WRITE);
+            restrict(KEY_PATH);
         }
     }
 
