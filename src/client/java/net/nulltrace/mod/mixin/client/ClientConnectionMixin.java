@@ -86,11 +86,43 @@ public class ClientConnectionMixin {
         LocalAddressUtil.serverAddress = null;
     }
 
+    /**
+     * "Already logged the debug line" guard, created on first use.
+     *
+     * <p><b>Never give this a field initialiser.</b> Mixin merges a mixin's instance initialisers
+     * into the target class's constructors, and that merge is not reliable across Minecraft
+     * versions: on 26.2 it did not happen for {@code Connection}, so this field stayed
+     * {@code null} while {@link #onSend} unconditionally called {@code compareAndSet} on it. Every
+     * outbound packet then threw an NPE inside {@code Connection.send}, which took out server-list
+     * pings and every connection attempt — the client could not go online at all (2.2.0, report
+     * from 26.2 / Fabric 0.19.5). The field itself *is* merged; only its initialiser is not, which
+     * is why the failure looked like a null field rather than a missing one.
+     *
+     * <p>Lazy creation is immune to that: nothing depends on the merge having run. Two Netty
+     * threads racing here can each create an instance, in which case the debug line prints at most
+     * twice — this is a log-once guard, not state any decision depends on.
+     */
     @Unique
-    private final AtomicBoolean nulltrace$logged = new AtomicBoolean(false);
+    private volatile AtomicBoolean nulltrace$logged;
 
+    /**
+     * Same hazard, but the default value ({@code false}) is the correct one, so a missing
+     * initialiser merge is harmless here. Left explicit so the next reader does not add an
+     * initialiser that puts {@code new} on this path.
+     */
     @Unique
-    private volatile boolean nulltrace$pipelineHandlerInstalled = false;
+    private volatile boolean nulltrace$pipelineHandlerInstalled;
+
+    /** The log-once guard for {@link #onSend}, created if the initialiser merge did not run. */
+    @Unique
+    private AtomicBoolean nulltrace$logOnce() {
+        AtomicBoolean flag = nulltrace$logged;
+        if (flag == null) {
+            flag = new AtomicBoolean(false);
+            nulltrace$logged = flag;
+        }
+        return flag;
+    }
 
     @Unique
     private static final ThreadLocal<Boolean> nulltrace$sending = ThreadLocal.withInitial(() -> false);
@@ -207,7 +239,7 @@ public class ClientConnectionMixin {
     private void onSend(Packet<?> packet, CallbackInfo ci) {
         nulltrace$ensurePipelineHandler();
 
-        if (nulltrace$logged.compareAndSet(false, true)) {
+        if (nulltrace$logOnce().compareAndSet(false, true)) {
             NullTrace.LOGGER.debug("[NullTrace] Connection.send mixin active!");
         }
         handleOutgoingPacket(packet, ci, (Connection)(Object)this);

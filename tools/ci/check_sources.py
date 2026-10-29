@@ -10,6 +10,8 @@ to discover:
   * a JSON template that only parses for one of the version targets
   * a fabric.mod.json entrypoint that names a class the source does not have
   * credential-shaped strings committed by accident
+  * a {@code @Unique} instance field with a non-null initialiser in a mixin, which
+    depends on Mixin merging the mixin's initialiser into the target class
 
 Usage::
 
@@ -184,6 +186,59 @@ def check_entrypoints(report: ntci.Report) -> None:
             report.failed("SRC008", f"fabric.mod.json references missing mixin config {config['config']}")
 
 
+# A mixin's field initialisers are merged into the target class's constructors. That merge is
+# not reliable across Minecraft versions: on 26.2 it did not happen for
+# net.minecraft.network.Connection, so ClientConnectionMixin's `@Unique private final
+# AtomicBoolean nulltrace$logged = new AtomicBoolean(false)` stayed null, and every outbound
+# packet threw an NPE inside Connection.send - no server-list pings, no connections at all.
+# A static initialiser is merged into <clinit> and was fine (nulltrace$sending worked), which is
+# why only instance fields are flagged. The invariant: an instance @Unique member must be valid
+# when null/false/0, i.e. it may not rely on its initialiser having run.
+UNIQUE_DECL = re.compile(r"@Unique\b")
+
+
+def check_mixin_unique_initialisers(report: ntci.Report) -> None:
+    findings: list[str] = []
+    mixin_sources = sorted((CLIENT_JAVA / "net/nulltrace/mod/mixin").rglob("*.java"))
+    for path in mixin_sources:
+        try:
+            content = ntci.read_text(path)
+        except (UnicodeDecodeError, OSError):
+            continue
+        for match in UNIQUE_DECL.finditer(content):
+            tail = content[match.end(): match.end() + 400]
+            field_end = tail.find(";")
+            body_start = tail.find("{")
+            # A method declaration has its body before the first ';' -> not a field.
+            if field_end < 0 or (0 <= body_start < field_end):
+                continue
+            declaration = tail[:field_end]
+            if " static " in f" {declaration} ":
+                continue  # static initialisers land in <clinit> and do get merged
+            if "=" not in declaration:
+                continue  # default null/false/0 is the only safe state anyway
+            initialiser = declaration.split("=", 1)[1].strip()
+            # `= null`, `= false`, `= 0` are identical to the JVM default, so a lost initialiser
+            # is harmless. Anything else (new X(), a constant, a non-zero literal) is not.
+            if initialiser in {"null", "false", "0", "0L", "0.0", "0.0f", "0.0d"}:
+                continue
+            line = content[: match.start()].count("\n") + 1
+            name = declaration.split("=")[0].strip().split()[-1]
+            findings.append(f"{path.relative_to(ntci.ROOT)}:{line} {name}")
+    if findings:
+        report.failed(
+            "SRC010",
+            f"{len(findings)} @Unique instance field(s) rely on a mixin field initialiser",
+            "; ".join(findings[:5])
+            + " - merge is unreliable (26.2 Connection lost it); create the value lazily instead",
+        )
+    else:
+        report.passed(
+            "SRC010",
+            f"no @Unique instance field depends on an initialiser in {len(mixin_sources)} mixin sources",
+        )
+
+
 def check_secrets(report: ntci.Report) -> None:
     findings: list[str] = []
     candidates = [
@@ -217,6 +272,7 @@ def main() -> int:
     report = ntci.Report("Source tree consistency")
     check_mixin_config(report)
     check_entrypoints(report)
+    check_mixin_unique_initialisers(report)
     check_secrets(report)
     report.render(verbose=not args.quiet)
     return report.exit_code

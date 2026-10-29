@@ -2,6 +2,30 @@
 
 All notable changes to NullTrace are documented here.
 
+## [2.2.1] - 2026-10-29
+
+Fixes a regression that made the client unusable on Minecraft 26.2: every outbound packet threw
+a `NullPointerException`, so server-list pings failed and no connection could be established.
+
+### Fixed
+- **2.2.0 on 26.2 could not connect to anything.** `ClientConnectionMixin` kept its log-once
+  guard in a `@Unique` instance field with a field initialiser
+  (`private final AtomicBoolean nulltrace$logged = new AtomicBoolean(false)`), and
+  `Connection#send` called `compareAndSet` on it unconditionally. Mixin merges a mixin's field
+  initialisers into the target class's constructors, and on 26.2 that merge did not happen for
+  `net.minecraft.network.Connection`: the field was declared but never assigned, so it was `null`
+  on every connection and `Connection.send` threw before writing a single byte. Symptoms were a
+  `NullPointerException … "this.nulltrace$logged" is null` for each server-list ping and for every
+  connection attempt, with the client never going online. The guard is now created lazily, which
+  does not depend on the merge at all. Verified on 26.2 against a local endpoint: the pre-fix
+  build reproduced the exact stack trace, the fixed build completes the handshake and the server
+  receives the packets.
+- `tools/ci/check_sources.py` grows check `SRC010`, so this cannot ship again: a `@Unique`
+  instance field in a mixin may not depend on its initialiser (`= null/false/0` is fine, because
+  that is the JVM default; `= new X()` is not). Static initialisers are exempt — those are merged
+  into `<clinit>`, which is why the `ThreadLocal` in the same class kept working. Three new
+  self-tests in `tools/ci/selftest.py` pin the check's behaviour.
+
 ## [Unreleased]
 
 Follow-up to the 2026-10-28 source review (`docs/reviews/src-review-2026-10-28.md`) and to the

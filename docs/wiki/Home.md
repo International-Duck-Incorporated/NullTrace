@@ -56,4 +56,5 @@ connection entirely. Use the whitelist and per-server profiles deliberately.
 
 - Source, issues and releases: [gitlab.com/international-duck-incorporated/NullTrace](https://gitlab.com/international-duck-incorporated/NullTrace)
 - License: GPL-3.0-only
-- Current release: 2.2.0 (Minecraft 1.21.11, 26.1, 26.2, 26.3)
+- Current release: **2.2.1** (Minecraft 1.21.11, 26.1, 26.2, 26.3) — 2.2.1 fixes a 26.2-only
+  regression where every outbound packet threw and no server could be joined

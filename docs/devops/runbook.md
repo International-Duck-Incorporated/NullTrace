@@ -116,7 +116,15 @@ are about to tag, and `CHANGELOG.md` has a `## [X.Y.Z]` section with at least on
 # 2. Optional but recommended: a real build + jar audit on one target.
 ./tools/ci/preflight.sh --build 26.3 --tag v2.2.0
 
-# 3. Tag and push. The tag pipeline publishes; branches never do.
+# 3. Launch the client on EVERY target you are about to ship, at least to the title
+#    screen and one server-list ping. Mixin behaviour is not version-independent:
+#    2.2.0 merged a mixin field initialiser on 1.21.11 and dropped it on 26.2, which
+#    made every outbound packet throw there and nothing else (see
+#    docs/reviews/postmortem-2026-10-29-26.2-npe.md). A green build and a green unit
+#    suite do not cover transformed bytecode.
+./gradlew :26.2:runClient          # repeat per target; check for NPEs in the log
+
+# 4. Tag and push. The tag pipeline publishes; branches never do.
 git tag -a v2.2.0 -m "NullTrace 2.1.1"
 git push origin v2.2.0
 ```

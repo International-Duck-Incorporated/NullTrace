@@ -3,6 +3,25 @@
 Most of what looks like a bug here is a documented trade-off. This page lists the ones people hit
 first, then the real failure modes and how to read them.
 
+## 2.2.0 on Minecraft 26.2 cannot ping or join any server (`nulltrace$logged is null`)
+
+**Fixed in 2.2.1 — update.** If your log shows
+
+```
+java.lang.NullPointerException: Cannot invoke "java.util.concurrent.atomic.AtomicBoolean.compareAndSet(...)"
+  because "this.nulltrace$logged" is null
+	at net.minecraft.network.Connection.handler$...$nulltrace$onSend(Connection.java)
+	at net.minecraft.network.Connection.send(Connection.java)
+```
+
+for every server-list ping and every connection attempt, you are on `nulltrace-26.2+v2.2.0.jar`.
+That build throws inside `Connection.send` before writing anything, so nothing can connect. It is
+specific to the **26.2** artifact; the 1.21.11 jar from the same release is not affected.
+
+Install `nulltrace-26.2+v2.2.1.jar` (or newer) and the pings and connections work again.
+Root cause: a mixin field initialiser that Mixin merged on 1.21.11 but not on 26.2
+(`docs/reviews/postmortem-2026-10-29-26.2-npe.md` in the repository).
+
 ## A mod feature stopped working after enabling spoofing
 
 Expected. **Spoof as Vanilla** blocks mod channels, so any mod that talks to the server (voice chat,

@@ -237,6 +237,50 @@ def metadata_cases(tests: SelfTest, workdir: pathlib.Path) -> None:
     tests.check("version bumped without a changelog section", 1, code, out, "META012")
 
 
+def mixin_field_cases(tests: SelfTest, workdir: pathlib.Path) -> None:
+    """SRC010 guards the 2.2.0 outage: a @Unique instance field whose value comes from a field
+    initialiser. Mixin merged the static initialiser into Connection (26.2) but not the instance
+    one, so the field stayed null and every outbound packet threw."""
+
+    def source_repo(root: pathlib.Path, field_line: str) -> pathlib.Path:
+        root.mkdir(parents=True, exist_ok=True)
+        (root / "gradle.properties").write_text("mod_version=2.2.1\n")
+        (root / "src/main/resources").mkdir(parents=True)
+        (root / "src/main/resources/fabric.mod.json").write_text(
+            '{"version": "${version}", "depends": {"minecraft": "${minecraft_version_range}"}}\n'
+        )
+        # Enough mixin wiring that SRC002-SRC008 pass, so SRC010 is what the case is testing.
+        (root / "src/client/resources").mkdir(parents=True)
+        (root / "src/client/resources/nulltrace.client.mixins.json").write_text(
+            '{"required": true, "package": "net.nulltrace.mod.mixin.client",'
+            ' "compatibilityLevel": "JAVA_25", "client": ["ThingMixin"]}\n'
+        )
+        (root / "src/client/java/net/nulltrace/mod/mixin/client").mkdir(parents=True)
+        (root / "src/client/java/net/nulltrace/mod/mixin/client/ThingMixin.java").write_text(
+            "package net.nulltrace.mod.mixin.client;\n"
+            "import org.spongepowered.asm.mixin.Unique;\n"
+            "public class ThingMixin {\n"
+            f"    @Unique {field_line}\n"
+            "}\n"
+        )
+        return root
+
+    bad = source_repo(workdir / "src-unique-init",
+                      "private java.util.concurrent.atomic.AtomicBoolean nulltrace$logged = new java.util.concurrent.atomic.AtomicBoolean(false);")
+    code, out = run("check_sources.py", "--quiet", env={"NT_REPO_ROOT": str(bad)})
+    tests.check("@Unique instance field with an initialiser", 1, code, out, "SRC010")
+
+    good_default = source_repo(workdir / "src-unique-default",
+                                "private boolean nulltrace$seen = false;")
+    code, out = run("check_sources.py", "--quiet", env={"NT_REPO_ROOT": str(good_default)})
+    tests.check("@Unique instance field matching the JVM default passes", 0, code, out)
+
+    good_static = source_repo(workdir / "src-unique-static",
+                              "private static final java.util.concurrent.atomic.AtomicBoolean nulltrace$logged = new java.util.concurrent.atomic.AtomicBoolean(false);")
+    code, out = run("check_sources.py", "--quiet", env={"NT_REPO_ROOT": str(good_static)})
+    tests.check("@Unique static field may keep its initialiser", 0, code, out)
+
+
 def lint_case(tests: SelfTest) -> None:
     code, out = run("lint_gitlab_ci.py", "--scenario", "tag")
     tests.check("real .gitlab-ci.yml lints", 0, code, out, "scenario: tag")
@@ -307,6 +351,7 @@ def main() -> int:
         workdir = pathlib.Path(directory)
         jar_cases(tests, workdir)
         metadata_cases(tests, workdir / "meta")
+        mixin_field_cases(tests, workdir)
         lint_case(tests)
         release_verify_cases(tests, workdir)
     return tests.summary()
