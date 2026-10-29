@@ -45,6 +45,34 @@ NullTrace **does not make you anonymous or completely undetectable**. It does no
 
 Some servers and mods require custom channels, signed chat, resource packs, cookies, or transfers. Blocking those features can break functionality or prevent a connection. Allowing them restores functionality at the cost of exposing the corresponding information. Use the whitelist and per-server profiles deliberately rather than assuming one setting is right for every server.
 
+### Compatibility notes worth knowing before you file a bug
+
+- **Hosting a LAN world turns probe protection off for you.** Translation-probe and keybind
+  protection both stand down when `hasSingleplayerServer()` is true, which is also true while you
+  are the *host* of an "Open to LAN" world. There is no remote server to leak to in that case, but
+  it does mean a LAN session is not representative when you are testing those protections.
+- **`meteorFix` disables mixins belonging to Meteor Client.** With that option on (the default),
+  NullTrace cancels a small set of another mod's mixins. It is deliberate and documented in
+  `MeteorMixinCanceller`, but if you are debugging Meteor behaviour, turn it off first.
+- **Jar-integrity verification is a speed bump, not a guarantee.** The check compares your jar
+  against the GitLab release checksums and can be silenced with `tamperWarningDismissed`; anyone who
+  can modify your jar can also remove the check. It raises the cost of a casual tamper — it does not
+  prove the jar you are running is the one that was released.
+- **Pack-cache isolation says so when it stops working.** The injection behind it is the one
+  tolerant (`require = 0`) mixin in the mod, because it targets a Minecraft lambda that can be
+  renamed. If a Minecraft/Fabric update breaks it, the mod now warns in the log and in
+  `/nulltrace audit` about 30 seconds after the first server-pack push instead of silently going back
+  to a shared cache.
+
+### Screenshots
+
+<img alt="In-game audit output" src="docs/assets/screenshots/runtime/audit-vanilla-spoof.jpg" width="49%"> <img alt="NullTrace configuration" src="docs/assets/screenshots/runtime/config-protection.jpg" width="49%">
+
+Every screenshot from the first in-client runtime test — title screen, config GUI, world creation,
+audit/channels/info/profile output in both whitelist modes — is in
+**[docs/screenshots.html](docs/screenshots.html)** (published with GitLab Pages, `pages` job).
+The same material is written up in `docs/reviews/runtime-test-2026-10-28.md`.
+
 ## Download and install
 
 Choose a JAR matching **both your Minecraft version and Fabric**:
@@ -148,7 +176,8 @@ Treat session tokens as credentials. Never paste them into issues, screenshots, 
 
 ## Commands
 
-`/nulltrace audit` and `/nulltrace profile` are available without enabling debug commands.
+`/nulltrace audit` and `/nulltrace profile` are available without enabling debug commands;
+`/nulltrace` on its own prints the list below, marking the two entries that need Debug Command.
 
 | Command | Description |
 | --- | --- |
@@ -168,7 +197,7 @@ CurseForge metadata comes from the public **[CFWidget API](https://cfwidget.com/
 
 The notification's **Download** button opens the selected official CurseForge file page or GitLab release page in your browser; it does not replace your installed JAR automatically. **Skip This Version** suppresses that version persistently, while dismissing the prompt suppresses it for the session.
 
-The separate integrity checker compares the installed JAR against available **GitLab SHA-256 release assets**. It skips verification when no matching release/checksum exists; this is not proof that an unverified JAR is safe, nor a separate CurseForge integrity check.
+The separate integrity checker compares the installed JAR against available **GitLab SHA-256 release assets**. It skips verification when no matching release/checksum exists; this is not proof that an unverified JAR is safe, nor a separate CurseForge integrity check. It is also advisory by construction: the warning can be dismissed, and an attacker who can replace your jar can remove the check itself. Treat it as a tamper speed bump.
 
 **Network disclosure:** release checks contact `api.cfwidget.com` and `gitlab.com`; the integrity checker may also request a linked checksum asset. These services see the network source address and a `NullTrace-Mod/<version>` user agent. The updater does not add account tokens, usernames, UUIDs, or server addresses to its requests. Both checks use the same HTTP client as the rest of NullTrace, so they follow the proxy mode chosen in **Advanced → Network**, and both can be switched off there (**Check for Updates**, **Verify JAR Integrity**) — with them disabled, nothing is requested from either service at all. They are auxiliary HTTP requests only: the connection to a game server is not affected by the proxy setting.
 

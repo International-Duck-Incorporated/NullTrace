@@ -2,6 +2,52 @@
 
 All notable changes to NullTrace are documented here.
 
+## [Unreleased]
+
+Follow-up to the 2026-10-28 source review (`docs/reviews/src-review-2026-10-28.md`) and to the
+first in-client runtime test (`docs/reviews/runtime-test-2026-10-28.md`): the remaining small
+findings, plus the four things the runtime test showed in the command output. Documentation for
+the mod now also lives in the GitLab wiki, and every runtime screenshot is published in
+`docs/screenshots.html`.
+
+### Fixed
+- **`/nulltrace audit` reported `Client brand: EXPOSED` in singleplayer.** No client-brand packet
+  is sent to an integrated server, so the line described a leak that cannot happen and inflated
+  `Remaining exposure` by one in exactly the case where nothing leaves the machine. The audit now
+  says `Client brand: not sent (singleplayer)` and does not count it, and the server line reads
+  `Server: local:e (integrated server)` instead of presenting a socket address as a real host.
+- **`/nulltrace` help listed commands that could not be run.** `info` and `channels` are gated
+  behind Debug Command and Brigadier hides a gated node from a source that does not satisfy it, so
+  the help told users to type commands that answered nothing. Gated lines now carry a dim
+  `(require Debug Command)` suffix, and `profile` — always available, never mentioned — is listed.
+  The four lines are also aligned; the audit line previously sat one column off.
+- **The audit's decision tail repeated itself.** The ledger records one decision per evaluation, so
+  the last eight lines were often three to eight copies of the same `CLIENT_BRAND` entry and
+  everything else was pushed out of the window. Consecutive identical decisions now fold into one
+  line with a `(xN)` count (`RepeatedDecisions`, unit-tested).
+- **`serverPackTranslations` was the last unbounded map in the codebase.** A server pack chooses how
+  many lang entries it ships and every one of them was retained for the session (~60 MB for a
+  1 M-entry file). Capped at 200 000 entries with one warning; keys past the cap are dropped rather
+  than evicted, so the map cannot be flushed by the pack that filled it.
+- **Per-account pack-cache isolation could stop working silently.** The one `require = 0` injection
+  in the mod (`DownloadQueueMixin`) can miss on a Minecraft/Fabric bump, and the only symptom was
+  that the README's promise quietly stopped holding. The mixin now reports every path it rewrites,
+  and 30 s after the first server-pack push the mod checks that counter: zero while the option is on
+  raises a log warning and a `WARN` entry in the audit (`PackCacheIsolation`).
+- **Local-address guard failed open on a trailing root dot.** `127.0.0.1.` is refused by the JDK
+  resolver, so the check returned "not blocked" for a loopback literal. Trailing dots are now
+  stripped before resolution, and the CGNAT/benchmarking asymmetry between the two predicates is
+  documented where a future reader will hit it.
+- **Proxy probe accepted any status code starting with 200.** `contains(" 200")` passed
+  `HTTP/1.1 2000 …`; the status line is now parsed and only an exact `200` counts. The probe also
+  stopped volunteering `User-Agent: NullTrace/<version>` to a third-party proxy.
+
+### Changed
+- Documentation caveats that were only in code comments or review notes are now in the README and
+  the wiki: hosting a LAN world turns probe protection off for the host, `meteorFix` disables
+  mixins belonging to another mod, and jar-integrity verification is an advisory speed bump that a
+  tamperer who can edit the jar can also remove.
+
 ## [2.2.0] - 2026-10-27
 
 Privacy fixes, a release that can be verified, and one rule for chat signing.

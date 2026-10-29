@@ -5,6 +5,7 @@ import com.llamalad7.mixinextras.injector.ModifyExpressionValue;
 import com.llamalad7.mixinextras.sugar.Local;
 import net.nulltrace.mod.NullTrace;
 import net.nulltrace.mod.config.NullTraceConfig;
+import net.nulltrace.mod.protection.PackCacheIsolation;
 import net.minecraft.client.Minecraft;
 import net.minecraft.server.packs.DownloadQueue;
 import org.spongepowered.asm.mixin.Final;
@@ -53,6 +54,10 @@ public class DownloadQueueMixin {
             NullTrace.LOGGER.warn("[NullTrace] Failed to isolate resource pack cache - account UUID is null");
             return original;
         }
+
+        // Liveness signal: PackCacheIsolation checks this counter 30 s after the first server
+        // pack push and reports a WARN if the injection never bound (require = 0 hides a miss).
+        PackCacheIsolation.recordIsolation();
 
         Path isolatedPath = cacheDir.resolve(accountId.toString()).resolve(packId.toString());
         NullTrace.LOGGER.debug("[NullTrace] Isolating resource pack cache for account {} -> {}", accountId, isolatedPath);

@@ -188,6 +188,20 @@ class LocalAddressUtilTest {
     }
 
     @Test
+    void trailingRootDotDoesNotFailOpen() {
+        // InetAddress refuses "127.0.0.1." — a check that resolves first used to return false
+        // (allow) for a loopback literal spelled with an FQDN root dot.
+        assertTrue(LocalAddressUtil.isBlockedServerPackTarget("203.0.113.9", "127.0.0.1."),
+                "root-dot loopback is still loopback");
+        assertTrue(LocalAddressUtil.isBlockedServerPackTarget("192.168.1.20", "[::1]."),
+                "root-dot IPv6 loopback is still loopback");
+        assertTrue(LocalAddressUtil.isBlockedServerPackTarget("203.0.113.9", "169.254.169.254."),
+                "root-dot link-local (cloud metadata) is still blocked");
+        // The normalisation must not turn a public host into a blocked one.
+        assertFalse(LocalAddressUtil.isBlockedServerPackTarget("203.0.113.9", "198.51.100.7."));
+    }
+
+    @Test
     void hostNormalizationIsStable() {
         assertEquals("example.com", LocalAddressUtil.normalizeHost("  Example.COM.  "));
         assertEquals("", LocalAddressUtil.normalizeHost(null));

@@ -10,6 +10,7 @@ import net.nulltrace.mod.privacy.PrivacyAction;
 import net.nulltrace.mod.privacy.PrivacyAudit;
 import net.nulltrace.mod.privacy.PrivacyDecision;
 import net.nulltrace.mod.privacy.PrivacySurface;
+import net.nulltrace.mod.privacy.RepeatedDecisions;
 import net.nulltrace.mod.privacy.ServerProfile;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.StringArgumentType;
@@ -27,6 +28,7 @@ import net.fabricmc.fabric.api.client.command.v2.ClientCommands;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback;
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
 import net.minecraft.ChatFormatting;
+import net.minecraft.client.Minecraft;
 import net.minecraft.commands.CommandBuildContext;
 import net.minecraft.commands.SharedSuggestionProvider;
 import net.minecraft.network.chat.Component;
@@ -117,17 +119,39 @@ public class NullTraceCommand {
     
     /**
      * Show help message.
+     *
+     * <p>Every registered subcommand is listed, in the order they were registered, and the two that
+     * are gated behind Debug Command say so. The previous version listed {@code info} and
+     * {@code channels} unconditionally — with Debug Command off, typing exactly what the help told
+     * you to type produced nothing at all, because Brigadier hides a {@code .requires}-gated node
+     * from a source that does not satisfy it. It also never mentioned {@code profile}, which is
+     * always available.
      */
     private static int showHelp(CommandContext<FabricClientCommandSource> ctx) {
         FabricClientCommandSource source = ctx.getSource();
-        
+        boolean debug = NullTraceConfig.getInstance().getSettings().isDebugCommand();
+
         source.sendFeedback(header(NullTraceLang.tr(NullTraceStrings.COMMAND_HELP_HEADER)));
         source.sendFeedback(Component.empty());
-        source.sendFeedback(info(NullTraceLang.tr(NullTraceStrings.COMMAND_HELP_INFO)));
-        source.sendFeedback(info(NullTraceLang.tr(NullTraceStrings.COMMAND_HELP_CHANNELS)));
         source.sendFeedback(info(NullTraceLang.tr(NullTraceStrings.COMMAND_HELP_AUDIT)));
-        
+        source.sendFeedback(info(NullTraceLang.tr(NullTraceStrings.COMMAND_HELP_PROFILE)));
+        source.sendFeedback(helpLine(NullTraceStrings.COMMAND_HELP_INFO, !debug));
+        source.sendFeedback(helpLine(NullTraceStrings.COMMAND_HELP_CHANNELS, !debug));
+
         return 1;
+    }
+
+    /**
+     * One help line, with a dim {@code (require Debug Command)} suffix when the subcommand is
+     * currently hidden from this source.
+     */
+    private static MutableComponent helpLine(String key, boolean gated) {
+        MutableComponent line = info(NullTraceLang.tr(key));
+        if (gated) {
+            line.append(Component.literal("  (" + NullTraceLang.tr(NullTraceStrings.COMMAND_HELP_GATED) + ")")
+                    .withStyle(ChatFormatting.DARK_GRAY));
+        }
+        return line;
     }
     
     /**
@@ -201,20 +225,34 @@ public class NullTraceCommand {
         int shaders = ModRegistry.getShaderCount();
         int strippedShaders = config.shouldStripModShaders() ? shaders : 0;
 
+        // On an integrated server (singleplayer, or hosting a LAN world) no client-brand packet is
+        // ever sent, so "EXPOSED" was wrong there: it reported a leak that cannot happen, and it
+        // inflated Remaining exposure in exactly the situation where nothing leaves the machine.
+        boolean integratedServer = Minecraft.getInstance().hasSingleplayerServer();
+
         long ledgerBlocked = ledger.count(PrivacyAction.BLOCK);
         long ledgerAllowed = ledger.count(PrivacyAction.ALLOW);
         long ledgerWarnings = ledger.count(PrivacyAction.WARN);
         int remaining = ledger.allowedSurfaceCount() + allowedChannels
-                + (config.shouldSpoofBrand() ? 0 : 1)
+                + (config.shouldSpoofBrand() || integratedServer ? 0 : 1)
                 + (knownPacks - blockedKnownPacks)
                 + (translations - blockedTranslations);
 
         source.sendFeedback(header(NullTraceLang.tr(NullTraceStrings.COMMAND_AUDIT_HEADER)));
-        source.sendFeedback(info(NullTraceLang.tr(NullTraceStrings.COMMAND_AUDIT_SERVER, config.getCurrentServer())));
+        // "local:e" is the integrated server's socket address, not a host anyone can join; label it
+        // so the audit cannot be read as "connected to a server called local:e".
+        source.sendFeedback(info(NullTraceLang.tr(
+                integratedServer ? NullTraceStrings.COMMAND_AUDIT_SERVER_INTEGRATED
+                                : NullTraceStrings.COMMAND_AUDIT_SERVER,
+                config.getCurrentServer())));
         source.sendFeedback(info(NullTraceLang.tr(NullTraceStrings.COMMAND_AUDIT_PROFILE,
                 config.getCurrentProfileMode().name())));
-        source.sendFeedback(info(NullTraceLang.tr(NullTraceStrings.COMMAND_AUDIT_BRAND,
-                config.shouldSpoofBrand() ? "BLOCKED" : "EXPOSED")));
+        if (integratedServer) {
+            source.sendFeedback(dim(NullTraceLang.tr(NullTraceStrings.COMMAND_AUDIT_BRAND_SINGLEPLAYER)));
+        } else {
+            source.sendFeedback(info(NullTraceLang.tr(NullTraceStrings.COMMAND_AUDIT_BRAND,
+                    config.shouldSpoofBrand() ? "BLOCKED" : "EXPOSED")));
+        }
         source.sendFeedback(info(NullTraceLang.tr(NullTraceStrings.COMMAND_AUDIT_CHANNELS,
                 blockedChannels, allowedChannels)));
         source.sendFeedback(info(NullTraceLang.tr(NullTraceStrings.COMMAND_AUDIT_KNOWN_PACKS,
@@ -232,11 +270,17 @@ public class NullTraceCommand {
         source.sendFeedback(dim(NullTraceLang.tr(NullTraceStrings.COMMAND_AUDIT_EVENTS,
                 ledgerBlocked, ledgerAllowed, ledgerWarnings)));
 
-        int shown = 0;
-        for (PrivacyDecision decision : ledger.events()) {
-            if (shown++ >= 8) break;
-            source.sendFeedback(dim(NullTraceLang.tr(NullTraceStrings.COMMAND_AUDIT_REASON,
-                    decision.surface(), decision.subject(), decision.reason())));
+        // Collapse consecutive identical decisions. The ledger records one entry per evaluation,
+        // and the brand is re-evaluated several times per connection, so the tail used to be the
+        // same CLIENT_BRAND line three to eight times — which reads as noise and hides the other
+        // decisions behind it. Order is preserved; only runs are folded.
+        for (RepeatedDecisions.Run repeated : RepeatedDecisions.fold(ledger.events(), 8)) {
+            String line = NullTraceLang.tr(NullTraceStrings.COMMAND_AUDIT_REASON,
+                    repeated.decision().surface(), repeated.decision().subject(),
+                    repeated.decision().reason());
+            source.sendFeedback(dim(repeated.count() > 1
+                    ? NullTraceLang.tr(NullTraceStrings.COMMAND_AUDIT_REASON_REPEAT, line, repeated.count())
+                    : line));
         }
         return 1;
     }

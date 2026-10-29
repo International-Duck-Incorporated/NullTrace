@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NullTrace — runtime screenshots</title>
+<style>
+  :root { --bg:#0e1014; --panel:#171b22; --line:#2a3140; --ink:#e6e9ef; --dim:#98a2b3; --accent:#7c5cff; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:15px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; }
+  .wrap { max-width:1180px; margin:0 auto; padding:0 24px; }
+  header { padding:34px 0 22px; border-bottom:1px solid var(--line); background:linear-gradient(180deg,#141824,#0e1014); }
+  h1 { margin:0 0 6px; font-size:26px; letter-spacing:-.2px; }
+  h1 span { color:var(--accent); }
+  .sub { color:var(--dim); margin:0 0 16px; font-size:14px; }
+  .facts { display:flex; flex-wrap:wrap; gap:8px; margin:0; padding:0; list-style:none; }
+  .facts li { background:var(--panel); border:1px solid var(--line); border-radius:999px; padding:4px 11px; font-size:12.5px; color:var(--dim); }
+  .facts b { color:var(--ink); font-weight:600; }
+  main { padding:8px 0 60px; }
+  h2.sec { font-size:13px; text-transform:uppercase; letter-spacing:1.4px; color:var(--dim); margin:34px 0 14px; padding-bottom:8px; border-bottom:1px solid var(--line); }
+  .grid { display:grid; gap:20px; grid-template-columns:repeat(auto-fill,minmax(340px,1fr)); align-items:start; }
+  .card { margin:0; background:var(--panel); border:1px solid var(--line); border-radius:12px; overflow:hidden; }
+  .thumb { display:block; line-height:0; background:#000; }
+  .thumb img { width:100%; height:auto; display:block; }
+  figcaption { padding:14px 16px 16px; }
+  figcaption h3 { margin:0 0 7px; font-size:14.5px; }
+  figcaption p { margin:0; color:var(--dim); font-size:13px; }
+  code { background:#0b0e13; border:1px solid var(--line); padding:1px 5px; border-radius:4px; font-size:12px; color:#cbd5e1; }
+  pre { margin:12px 0 0; padding:11px 12px; background:#0b0e13; border:1px solid var(--line); border-radius:8px;
+        font-size:11.5px; line-height:1.5; color:#cbd5e1; white-space:pre-wrap; overflow-wrap:anywhere;
+        font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; }
+  footer { padding:0 0 50px; color:var(--dim); font-size:12.5px; }
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <h1>NullTrace <span>2.2.0</span> — runtime screenshots</h1>
+    <p class="sub">First in-client run of the 2.2.0 tree: real Minecraft, real world, the protections firing.</p>
+    <ul class="facts">
+      <li><b>Minecraft</b> 1.21.11</li>
+      <li><b>Fabric</b> Loader 0.19.3</li>
+      <li><b>53</b> mods</li>
+      <li><b>Java</b> Temurin 21.0.13</li>
+      <li><b>GPU</b> none — Xvfb + Mesa llvmpipe</li>
+      <li><b>Render distance</b> 2</li>
+      <li><b>12</b> screenshots</li>
+    </ul>
+  </div>
+</header>
+<main class="wrap">
+<h2 class="sec">Launch</h2><div class="grid">
+    <figure class="card" id="shot-1">
+      <a class="thumb" href="assets/screenshots/runtime/title-screen.jpg"><img loading="lazy" src="assets/screenshots/runtime/title-screen.jpg" alt="Title screen — NullTrace 2.2.0 loaded"></a>
+      <figcaption>
+        <h3>Title screen — NullTrace 2.2.0 loaded</h3>
+        <p>Minecraft 1.21.11 / Fabric with 53 mods, on software GL (llvmpipe). Bottom-left reads <code>Minecraft 1.21.11/Fabric (53 mods)</code>. NullTrace logged <code>NullTrace v2.2.0 — Privacy protection for Minecraft</code> before this frame.</p>
+        
+      </figcaption>
+    </figure>
+    <figure class="card" id="shot-2">
+      <a class="thumb" href="assets/screenshots/runtime/multiplayer-button.jpg"><img loading="lazy" src="assets/screenshots/runtime/multiplayer-button.jpg" alt="Multiplayer screen — the NullTrace button"></a>
+      <figcaption>
+        <h3>Multiplayer screen — the NullTrace button</h3>
+        <p>The mod's entry point, top-left next to <em>Play Multiplayer</em>.</p>
+        
+      </figcaption>
+    </figure>
+    <figure class="card" id="shot-3">
+      <a class="thumb" href="assets/screenshots/runtime/config-protection.jpg"><img loading="lazy" src="assets/screenshots/runtime/config-protection.jpg" alt="Configuration — Protection tab"></a>
+      <figcaption>
+        <h3>Configuration — Protection tab</h3>
+        <p>Every protection toggle renders and reflects the persisted config. Five tabs: Protection / Whitelist / Misc / Advanced / Accounts.</p>
+        
+      </figcaption>
+    </figure>
+    <figure class="card" id="shot-4">
+      <a class="thumb" href="assets/screenshots/runtime/title-screen-spoof-on.jpg"><img loading="lazy" src="assets/screenshots/runtime/title-screen-spoof-on.jpg" alt="Second run — vanilla spoofing enabled"></a>
+      <figcaption>
+        <h3>Second run — vanilla spoofing enabled</h3>
+        <p>Relaunch after setting <code>spoofAsVanilla = true</code> and <code>debugCommand = true</code>. Log: <code>[NullTrace] Loaded config - spoofAsVanilla: true</code>.</p>
+        
+      </figcaption>
+    </figure></div><h2 class="sec">World</h2><div class="grid">
+    <figure class="card" id="shot-5">
+      <a class="thumb" href="assets/screenshots/runtime/world-creation.jpg"><img loading="lazy" src="assets/screenshots/runtime/world-creation.jpg" alt="World creation"></a>
+      <figcaption>
+        <h3>World creation</h3>
+        <p>The test world settings. Cycle buttons ignore synthetic clicks in a headless X server, so the world was created with defaults (survival, cheats off).</p>
+        
+      </figcaption>
+    </figure>
+    <figure class="card" id="shot-6">
+      <a class="thumb" href="assets/screenshots/runtime/world-list.jpg"><img loading="lazy" src="assets/screenshots/runtime/world-list.jpg" alt="Select world — &lt;code&gt;nt-test&lt;/code&gt;"></a>
+      <figcaption>
+        <h3>Select world — <code>nt-test</code></h3>
+        <p>The world list, with the mod's own red marker line.</p>
+        
+      </figcaption>
+    </figure>
+    <figure class="card" id="shot-7">
+      <a class="thumb" href="assets/screenshots/runtime/in-game.jpg"><img loading="lazy" src="assets/screenshots/runtime/in-game.jpg" alt="In-game"></a>
+      <figcaption>
+        <h3>In-game</h3>
+        <p>Render distance 2 with Sodium, Lithium and C2ME on llvmpipe. No crash, no mixin failure: <code>Player233 joined the game</code>, <code>Changing view distance to 2</code>.</p>
+        
+      </figcaption>
+    </figure></div><h2 class="sec">Commands</h2><div class="grid">
+    <figure class="card" id="shot-8">
+      <a class="thumb" href="assets/screenshots/runtime/command-help.jpg"><img loading="lazy" src="assets/screenshots/runtime/command-help.jpg" alt="/nulltrace — help"></a>
+      <figcaption>
+        <h3>/nulltrace — help</h3>
+        <p>The command tree, registered client-side. This frame is the reason the help was rewritten: the audit line is a column off the other two, <code>profile</code> is missing entirely, and <code>info</code>/<code>channels</code> are listed even when Debug Command is off and Brigadier is hiding them from the source. <em>Fixed since this screenshot.</em></p>
+        <pre>/nulltrace info [mod]  - Show tracked mods or details for a specific mod
+/nulltrace channels    - Show all tracked network channels
+/nulltrace audit - Show the current connection privacy audit</pre>
+      </figcaption>
+    </figure>
+    <figure class="card" id="shot-9">
+      <a class="thumb" href="assets/screenshots/runtime/audit-whitelist-auto.jpg"><img loading="lazy" src="assets/screenshots/runtime/audit-whitelist-auto.jpg" alt="/nulltrace audit — whitelist AUTO, no spoofing"></a>
+      <figcaption>
+        <h3>/nulltrace audit — whitelist AUTO, no spoofing</h3>
+        <p>Brand exposed, all 9 mod channels allowed, every non-vanilla translation probe already blocked. The repeated <code>CLIENT_BRAND</code> lines are one entry per evaluation; they are folded into one line with a count since this screenshot.</p>
+        <pre>Server: local:e
+Profile: STANDARD
+Client brand: EXPOSED
+Mod channels: 0 blocked / 9 allowed
+Known packs: 2 blocked / 0 allowed
+Translation probes: 8118 blocked / 0 allowed
+Resource-pack requests: 0 blocked / 0 allowed
+Local requests: 0 blocked / 0 detected
+Shader overrides stripped: 0
+Remaining exposure: 11
+Recorded decisions: 0 blocked, 12 allowed, 0 warnings</pre>
+      </figcaption>
+    </figure>
+    <figure class="card" id="shot-10">
+      <a class="thumb" href="assets/screenshots/runtime/audit-vanilla-spoof.jpg"><img loading="lazy" src="assets/screenshots/runtime/audit-vanilla-spoof.jpg" alt="/nulltrace audit — Spoof as Vanilla ON"></a>
+      <figcaption>
+        <h3>/nulltrace audit — Spoof as Vanilla ON</h3>
+        <p>Same world, <code>spoofAsVanilla = true</code>: brand blocked, 9/0 channels, exposure 0. This is the matrix the unit tests pin, observed at runtime.</p>
+        <pre>Server: local:e
+Profile: STANDARD
+Client brand: BLOCKED
+Mod channels: 9 blocked / 0 allowed
+Known packs: 2 blocked / 0 allowed
+Translation probes: 8118 blocked / 0 allowed
+Remaining exposure: 0
+Recorded decisions: 6 blocked, 0 allowed, 0 warnings</pre>
+      </figcaption>
+    </figure>
+    <figure class="card" id="shot-11">
+      <a class="thumb" href="assets/screenshots/runtime/channels.jpg"><img loading="lazy" src="assets/screenshots/runtime/channels.jpg" alt="/nulltrace channels — resolved owners"></a>
+      <figcaption>
+        <h3>/nulltrace channels — resolved owners</h3>
+        <p>Every tracked channel attributed to the mod that registered it, with the whitelist verdict. The nine blocked channels are exactly the count in the audit above.</p>
+        <pre>Fabric Screen Handler API (v1) (fabric-screen-handler-api-v1):
+  ✗ fabric-screen-handler-api-v1:open_screen
+Fabric API (fabric-api):
+  ✗ fabric:extended_block_state_particle_effect_sync
+  ✗ fabric:recipe_sync
+  ✗ fabric:attachment_sync_v1
+  ✗ fabric:accepted_attachments_v1
+  ✗ fabric:registry/sync
+  ✗ fabric:custom_ingredient_sync
+c (c):
+  ✗ c:version
+  ✗ c:register
+
+Total: 9 channels
+✓ = whitelisted, ✗ = blocked</pre>
+      </figcaption>
+    </figure>
+    <figure class="card" id="shot-12">
+      <a class="thumb" href="assets/screenshots/runtime/profile-maximum-privacy.jpg"><img loading="lazy" src="assets/screenshots/runtime/profile-maximum-privacy.jpg" alt="/nulltrace profile MAXIMUM_PRIVACY — live switch"></a>
+      <figcaption>
+        <h3>/nulltrace profile MAXIMUM_PRIVACY — live switch</h3>
+        <p>Switching the per-server profile mid-session. Blocked decisions go 6 → 36 and the entry persists to <code>nulltrace.json</code> under <code>serverProfiles</code>.</p>
+        <pre>[NullTrace] NullTrace server profiles
+Server: local:e
+Profile: STANDARD
+Profile for local:e set to MAXIMUM_PRIVACY
+
+[NullTrace] NULLTRACE AUDIT
+Server: local:e
+Profile: MAXIMUM_PRIVACY
+Client brand: BLOCKED
+Mod channels: 9 blocked / 0 allowed
+Remaining exposure: 0
+Recorded decisions: 36 blocked, 0 allowed, 0 warnings</pre>
+      </figcaption>
+    </figure></div>
+</main>
+<footer class="wrap">
+  Captured 2026-10-28 during <code>:1.21.11:runClient</code>; write-up in
+  <code>docs/reviews/runtime-test-2026-10-28.md</code>. Images are JPEG conversions of the original
+  PNG frames in <code>docs/assets/screenshots/runtime/</code>. Click any image for the full-size file.
+</footer>
+</body>
+</html>

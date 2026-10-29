@@ -95,7 +95,17 @@ public class LocalAddressUtil {
      * RFC 1918 / ULA / CGNAT targets are only tolerated when the server shares that network.
      *
      * <p>An unresolvable or empty host is not blocked here: the connection will fail on its own,
-     * and DNS answers are re-checked for each redirect hop.
+     * and DNS answers are re-checked for each redirect hop. One spelling of a resolvable host is
+     * normalised first: a trailing dot (as in {@code 127.0.0.1.}) is stripped, because the JDK's
+     * resolver rejects it outright — which used to make this predicate fail <em>open</em> rather
+     * than blocking a loopback literal spelled with an FQDN root dot. Nothing here depends on the
+     * connect path failing after the check, so the dot must not be able to reach it.
+     *
+     * <p>Deliberate asymmetry, so it does not get "fixed" by accident: {@link #isNeverServerReachable}
+     * rejects loopback/link-local/multicast/reserved but not CGNAT ({@code 100.64/10}) or the
+     * benchmarking block ({@code 198.18/15}), while {@link #isLocalAddress(InetAddress)} rejects both.
+     * So a server on {@code 192.168.x.x} may point the client at {@code 100.64.x.x}: some CGNAT
+     * ranges are legitimately reachable from a LAN, and the target is not a third party there.
      *
      * @param serverAddress address of the game server (an IP literal, may be null)
      * @param targetHost    host of the URL the server asked the client to fetch
@@ -105,7 +115,7 @@ public class LocalAddressUtil {
 
         InetAddress[] targets;
         try {
-            targets = InetAddress.getAllByName(stripBrackets(targetHost.trim()));
+            targets = InetAddress.getAllByName(stripBrackets(stripRootDot(targetHost.trim())));
         } catch (UnknownHostException e) {
             return false;
         }
@@ -132,6 +142,19 @@ public class LocalAddressUtil {
             return host.substring(1, host.length() - 1);
         }
         return host;
+    }
+
+    /**
+     * Drops trailing dots from an FQDN-root spelling ({@code example.com.}, {@code 127.0.0.1.}).
+     * Only used on the resolution path — {@link #normalizeHost(String)} keeps doing the
+     * lowercasing used for profile keys.
+     */
+    private static String stripRootDot(String host) {
+        int end = host.length();
+        while (end > 0 && host.charAt(end - 1) == '.') {
+            end--;
+        }
+        return host.substring(0, end);
     }
 
     private static boolean isIpv4Mapped(byte[] bytes) {

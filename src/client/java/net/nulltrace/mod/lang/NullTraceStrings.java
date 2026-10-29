@@ -154,10 +154,17 @@ public final class NullTraceStrings {
     public static final String COMMAND_HELP_INFO = "nulltrace.command.help.info";
     public static final String COMMAND_HELP_CHANNELS = "nulltrace.command.help.channels";
     public static final String COMMAND_HELP_AUDIT = "nulltrace.command.help.audit";
+    public static final String COMMAND_HELP_PROFILE = "nulltrace.command.help.profile";
+    /** Suffix appended to a help line whose subcommand is gated behind Debug Command. */
+    public static final String COMMAND_HELP_GATED = "nulltrace.command.help.gated";
     public static final String COMMAND_AUDIT_HEADER = "nulltrace.command.audit.header";
     public static final String COMMAND_AUDIT_SERVER = "nulltrace.command.audit.server";
+    /** Same line on an integrated server (singleplayer / LAN host), where the key is not a remote host. */
+    public static final String COMMAND_AUDIT_SERVER_INTEGRATED = "nulltrace.command.audit.server.integrated";
     public static final String COMMAND_AUDIT_PROFILE = "nulltrace.command.audit.profile";
     public static final String COMMAND_AUDIT_BRAND = "nulltrace.command.audit.brand";
+    /** Shown instead of {@link #COMMAND_AUDIT_BRAND} on an integrated (singleplayer/LAN-host) server, where no brand packet is sent. */
+    public static final String COMMAND_AUDIT_BRAND_SINGLEPLAYER = "nulltrace.command.audit.brand.singleplayer";
     public static final String COMMAND_AUDIT_CHANNELS = "nulltrace.command.audit.channels";
     public static final String COMMAND_AUDIT_KNOWN_PACKS = "nulltrace.command.audit.knownPacks";
     public static final String COMMAND_AUDIT_TRANSLATIONS = "nulltrace.command.audit.translations";
@@ -167,6 +174,8 @@ public final class NullTraceStrings {
     public static final String COMMAND_AUDIT_EXPOSURE = "nulltrace.command.audit.exposure";
     public static final String COMMAND_AUDIT_EVENTS = "nulltrace.command.audit.events";
     public static final String COMMAND_AUDIT_REASON = "nulltrace.command.audit.reason";
+    /** Wraps {@link #COMMAND_AUDIT_REASON} when the same decision repeated: {@code "%s (x%d)"}. */
+    public static final String COMMAND_AUDIT_REASON_REPEAT = "nulltrace.command.audit.reason.repeat";
     public static final String COMMAND_PROFILE_HEADER = "nulltrace.command.profile.header";
     public static final String COMMAND_PROFILE_SET = "nulltrace.command.profile.set";
 

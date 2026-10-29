@@ -59,9 +59,11 @@ public final class ProxyTester {
     private static Result probeHttp(ProxyEntry entry, long started) throws IOException {
         try (Socket socket = connect(entry)) {
             OutputStream out = socket.getOutputStream();
+            // No User-Agent on purpose. A reachability probe has no reason to identify the
+            // client, and the previous "NullTrace/<version>" header handed a third-party proxy
+            // the mod name and version — a strange thing for a privacy tool to volunteer.
             String request = "CONNECT " + PROBE_HOST + ":" + PROBE_PORT + " HTTP/1.1\r\n"
                     + "Host: " + PROBE_HOST + ":" + PROBE_PORT + "\r\n"
-                    + "User-Agent: NullTrace/" + NullTrace.getVersion() + "\r\n"
                     + "\r\n";
             out.write(request.getBytes(StandardCharsets.ISO_8859_1));
             out.flush();
@@ -73,9 +75,28 @@ public final class ProxyTester {
             if (statusLine == null) {
                 return new Result(false, latency, "no response to CONNECT");
             }
-            boolean ok = statusLine.contains(" 200");
-            return new Result(ok, latency, statusLine.trim());
+            return new Result(isConnectAccepted(statusLine), latency, statusLine.trim());
         }
+    }
+
+    /**
+     * Whether a CONNECT response status line means the tunnel was established.
+     *
+     * <p>Parses the code instead of searching for {@code " 200"}: the old check accepted
+     * {@code HTTP/1.1 2000 ...} and {@code HTTP/1.0 4200 ...}, i.e. any status whose digits
+     * merely started with 200. Only an exact {@code 200} counts, in any HTTP/1.x version.
+     */
+    public static boolean isConnectAccepted(String statusLine) {
+        if (statusLine == null) return false;
+        String line = statusLine.trim();
+        if (!line.startsWith("HTTP/")) return false;
+        int space = line.indexOf(' ');
+        if (space < 0) return false;
+        int codeStart = space + 1;
+        if (line.length() < codeStart + 3) return false;
+        if (!line.startsWith("200", codeStart)) return false;
+        // Must be the whole code: next char is end-of-line or the reason-phrase separator.
+        return line.length() == codeStart + 3 || line.charAt(codeStart + 3) == ' ';
     }
 
     private static Result probeSocks(ProxyEntry entry, long started) throws IOException {

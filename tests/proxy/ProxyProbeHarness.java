@@ -33,13 +33,15 @@ public final class ProxyProbeHarness {
             int socks = servers.socks5NoAuthProxy();
             int socksAuth = servers.socks5AuthRequiredProxy();
             int refusing = servers.refusingHttpProxy();
+            int misleading = servers.misleading2000Proxy();
             int silent = servers.silentEndpoint();
             int dead = FakeProxyServers.closedPort();
 
             parseChecks();
             listChecks();
             jsonChecks();
-            liveChecks(http, socks, socksAuth, refusing, silent, dead);
+            statusLineChecks();
+            liveChecks(http, socks, socksAuth, refusing, misleading, silent, dead);
         }
 
         System.out.println();
@@ -168,7 +170,23 @@ public final class ProxyProbeHarness {
 
     // ------------------------------------------------------------------ live probes
 
-    private static void liveChecks(int http, int socks, int socksAuth, int refusing, int silent, int dead)
+    private static void statusLineChecks() {
+        System.out.println("== CONNECT status line ==");
+        // Only an exact 200 is a tunnel. The old contains(" 200") accepted every code below.
+        check("HTTP/1.1 200 Connection established", ProxyTester.isConnectAccepted("HTTP/1.1 200 Connection established"), null);
+        check("bare status line without a reason phrase", ProxyTester.isConnectAccepted("HTTP/1.1 200"), null);
+        check("HTTP/1.0 200 Tunnel established", ProxyTester.isConnectAccepted("HTTP/1.0 200 Tunnel established"), null);
+        check("HTTP/1.1 2000 is not 200", !ProxyTester.isConnectAccepted("HTTP/1.1 2000 Not A Status"), null);
+        check("HTTP/1.1 2001 is not 200", !ProxyTester.isConnectAccepted("HTTP/1.1 2001 Not A Status"), null);
+        check("HTTP/1.1 403 is not 200", !ProxyTester.isConnectAccepted("HTTP/1.1 403 Forbidden"), null);
+        check("HTTP/1.1 1200 is not 200", !ProxyTester.isConnectAccepted("HTTP/1.1 1200 Nope"), null);
+        check("a 200 in the reason phrase does not count", !ProxyTester.isConnectAccepted("HTTP/1.1 407 200 Authentication Required"), null);
+        check("garbage is rejected", !ProxyTester.isConnectAccepted("SSH-2.0-OpenSSH_9.6"), null);
+        check("null is rejected", !ProxyTester.isConnectAccepted(null), null);
+    }
+
+    private static void liveChecks(int http, int socks, int socksAuth, int refusing, int misleading,
+                                   int silent, int dead)
             throws Exception {
         System.out.println("== live probes ==");
         ProxyTester.Result result;
@@ -189,6 +207,9 @@ public final class ProxyProbeHarness {
         check("HTTP probe fails on a non-200 CONNECT", !result.ok(), result);
         check("refusal detail carries the status line",
                 result.detail() != null && result.detail().contains("403"), result.detail());
+
+        result = ProxyTester.test(new ProxyEntry(ProxyEntry.Type.HTTP, "127.0.0.1", misleading)).get();
+        check("a proxy answering 2000 is not reported as working", !result.ok(), result);
 
         result = ProxyTester.test(new ProxyEntry(ProxyEntry.Type.HTTP, "127.0.0.1", dead)).get();
         check("closed port fails cleanly", !result.ok(), result);

@@ -25,6 +25,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Unified registry for tracking mod information including translation keys,
@@ -50,6 +51,24 @@ public class ModRegistry {
     /** Server pack translations: key → value. Returned at block time so a mod lang beating the pack in {@code ClientLanguage.storage} can't expose us. Atomic-swapped per reload. */
     private static volatile Map<String, String> serverPackTranslations =
         new ConcurrentHashMap<>();
+
+    /**
+     * Hard ceiling on {@link #serverPackTranslations}.
+     *
+     * <p>A server pack ships {@code assets/minecraft/lang/*.json} and every one of those entries
+     * lands here, so the size is attacker-chosen. Vanilla keeps its own copy, so this map is a
+     * second table of the same strings — roughly 50-60 bytes per entry, i.e. a ~60 MB session
+     * residency for a 1 M-entry lang file, for a pack the user may have refused ten seconds later.
+     * Everything else in the mod is bounded ({@code AuditLedger} 2048, {@code TrackPackDetector}
+     * 100/50, {@code PrivacyLogger} 50); this was the remaining unbounded one.
+     *
+     * <p>200 k entries is far above any legitimate pack (vanilla en_us is ~7 400 keys; the largest
+     * real translation packs are tens of thousands) and caps the worst case at ~12 MB.
+     */
+    private static final int MAX_SERVER_PACK_TRANSLATIONS = 200_000;
+
+    /** One warning per session when the cap is hit, so a hostile pack can't flood the log either. */
+    private static final AtomicBoolean serverPackTranslationCapLogged = new AtomicBoolean(false);
 
     /** Maps channel namespaces to their owning Fabric mod IDs (e.g., "jm" -> "journeymap") */
     private static final Map<String, Set<String>> namespaceToModIds =
@@ -848,6 +867,8 @@ public class ModRegistry {
         vanillaTranslationKeys.clear();
         serverPackTranslations.clear();
         translationKeyToModId.clear();
+        // A disconnect/reload gets a fresh warning budget: the next pack's cap hit is news again.
+        serverPackTranslationCapLogged.set(false);
         NullTrace.LOGGER.debug(
             "[ModRegistry] Cleared translation key cache (including server pack keys)"
         );

@@ -32,6 +32,11 @@ public final class PackStripHandler {
     private static final AtomicBoolean overlayShownThisSession = new AtomicBoolean(false);
 
     public static void onPackPush(UUID id, String url, boolean required) {
+        // Independent of the strip features below, and deliberately before the early return:
+        // this is the only reliable "a server pack is arriving" signal for the pack-cache
+        // isolation liveness check, which must fire whether or not stripping is configured.
+        PackCacheIsolation.noteServerPackPush();
+
         NullTraceConfig config = NullTraceConfig.getInstance();
         boolean stripPack = config.shouldStripPack();          // whole-pack lang-only strip (EP-gated)
         boolean stripShaders = config.shouldStripModShaders();  // per-mod shader strip (active under EP)

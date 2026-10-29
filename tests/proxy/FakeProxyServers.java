@@ -35,6 +35,12 @@ public final class FakeProxyServers implements Closeable {
     /** An HTTP endpoint that answers with a non-200 CONNECT status. */
     public int refusingHttpProxy() { return serve((socket, in, out) -> { socket.setSoTimeout(4000); readHeaders(in); out.write("HTTP/1.1 403 Forbidden\r\n\r\n".getBytes(StandardCharsets.ISO_8859_1)); out.flush(); }); }
 
+    /**
+     * An HTTP endpoint that answers with a status code that merely <em>starts</em> with 200 —
+     * the shape a naive {@code contains(" 200")} check accepted as success.
+     */
+    public int misleading2000Proxy() { return serve((socket, in, out) -> { socket.setSoTimeout(4000); readHeaders(in); out.write("HTTP/1.1 2000 Not A Status\r\n\r\n".getBytes(StandardCharsets.ISO_8859_1)); out.flush(); }); }
+
     /** A free port with nothing listening on it. */
     public static int closedPort() {
         try (ServerSocket socket = new ServerSocket(0)) {
