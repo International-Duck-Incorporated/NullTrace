@@ -1,0 +1,8 @@
+- [Home](Home)
+- [Installation](Installation)
+- [Configuration](Configuration)
+- [Commands](Commands)
+- [Privacy model](Privacy-model)
+- [Screenshots](Screenshots)
+- [Troubleshooting](Troubleshooting)
+- [Development](Development)

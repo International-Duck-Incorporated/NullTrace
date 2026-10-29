@@ -16,6 +16,10 @@
 
 NullTrace gives you control over information your Minecraft client exposes to servers. It reduces common mod fingerprints, limits tracking through server resource packs, and makes privacy decisions inspectable.
 
+Full documentation — installation, every option, the command reference, the privacy model and
+troubleshooting — lives in the **[wiki](https://gitlab.com/international-duck-incorporated/NullTrace/-/wikis/home)**
+(sources in [`docs/wiki/`](docs/wiki), kept in sync with this repository).
+
 NullTrace is a fork of [OpSec](https://github.com/aurickk/OpSec) by [aurickk](https://github.com/aurickk), developed independently with its own branding, protections, and multi-version builds.
 
 > [!IMPORTANT]
